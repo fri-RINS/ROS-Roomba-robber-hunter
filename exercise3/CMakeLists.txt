@@ -19,4 +19,6 @@ catkin_package()
 include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 add_executable(map_goals src/map_goals.cpp)
 target_link_libraries(map_goals ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_executable(hw3_goals src/hw3_goals.cpp)
+target_link_libraries(hw3_goals ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 

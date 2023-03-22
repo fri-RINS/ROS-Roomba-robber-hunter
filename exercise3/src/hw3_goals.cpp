@@ -47,7 +47,8 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg_map) {
 
     //We have to flip around the y axis, y for image starts at the top and y for map at the bottom
     int size_y_rev = size_y-1;
-
+	
+    //reconstruct map matrix --> from vector to matrix + flip y
     for (int y = size_y_rev; y >= 0; --y) {
 
         int idx_map_y = size_x * (size_y -y);
@@ -76,13 +77,11 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg_map) {
 
 }
 
-void mouseCallback(int event, int x, int y, int, void* data) {
-
-    if( event != EVENT_LBUTTONDOWN || cv_map.empty())
-        return;
-
+void nextGoal(int x, int y) {
+    
     int v = (int)cv_map.at<unsigned char>(y, x);
 
+	//check if point is reachable
 	if (v != 255) {
 		ROS_WARN("Unable to move to (x: %d, y: %d), not reachable", x, y);
 		return;
@@ -91,10 +90,12 @@ void mouseCallback(int event, int x, int y, int, void* data) {
     geometry_msgs::Point pt;
     geometry_msgs::Point transformed_pt;
 
+    //convert point to image coordinate system
     pt.x = (float)x * map_resolution;
-    pt.y = (float)(cv_map.rows - y) * map_resolution;
+    pt.y = (float)(cv_map.rows - y) * map_resolution; //cv_map.rows - y --> because y is flipped
     pt.z = 0.0;
     
+    //transform C.S. because origin is not at 0,0
     tf2::doTransform(pt, transformed_pt, map_transform);
     
     //geometry_msgs::Point transformed = map_transform * pt;
@@ -108,7 +109,6 @@ void mouseCallback(int event, int x, int y, int, void* data) {
     goal.header.stamp = ros::Time::now();
 
     ROS_INFO("Moving to (x: %f, y: %f)", transformed_pt.x, transformed_pt.y);
-    ROS_INFO("Moving to (x: %d, y: %d)", x, y);
 
     goal_pub.publish(goal);
 }
@@ -122,16 +122,36 @@ int main(int argc, char** argv) {
     goal_pub = n.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10);
 
     namedWindow("Map");
-
-    setMouseCallback("Map", mouseCallback, NULL);
-
+    
+    
+    int points[5][2] = {
+        {263,310},
+        {281,271},
+        {263,229},
+        {212,303},
+        {221,278},
+    };
+    
+   
+    int i = 0;
     while(ros::ok()) {
 
         if (!cv_map.empty()) imshow("Map", cv_map);
-
-        waitKey(30);
-
+       	
+        if (i >= 5) return 0;
+       
+        if (!cv_map.empty()) {
+            ROS_INFO("i: %d", i);
+            int nextX = points[i][0];
+            int nextY = points[i][1];
+    	    nextGoal(nextX,nextY);
+            i++;
+            sleep(10);
+            
+        }    
+        
         ros::spinOnce();
+	
     }
     return 0;
 
