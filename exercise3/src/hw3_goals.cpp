@@ -7,6 +7,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <actionlib_msgs/GoalStatusArray.h>
 
 using namespace std;
 using namespace cv;
@@ -17,6 +18,15 @@ geometry_msgs::TransformStamped map_transform;
 
 ros::Publisher goal_pub;
 ros::Subscriber map_sub;
+int i = 0;
+ int points[5][2] = {
+        {263,310},
+        {281,271},
+        {263,229},
+        {212,303},
+        {221,278},
+    };
+
 
 void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg_map) {
     int size_x = msg_map->info.width;
@@ -112,6 +122,23 @@ void nextGoal(int x, int y) {
 
     goal_pub.publish(goal);
 }
+void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr& msg)
+{
+  // Access the last element in the status_list array and extract the status field
+  int status = 0;
+  if (!msg->status_list.empty()) { 
+  	status= msg->status_list[0].status;
+ 	}
+  ROS_INFO("Received status: %d", status);
+  
+  if(status == 3 || status == 0 && i <5){ 
+        int nextY = points[i][1];
+        int nextX = points[i][0];
+    	 nextGoal(nextX,nextY);
+    	 i++;
+    	 ROS_INFO("Goal number %d reached!!", i);
+  }
+}
 
 int main(int argc, char** argv) {
 
@@ -120,25 +147,21 @@ int main(int argc, char** argv) {
 
     map_sub = n.subscribe("map", 10, &mapCallback);
     goal_pub = n.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10);
+    ros::Subscriber sub = n.subscribe("/move_base/status", 100, &messageCallback);
 
     namedWindow("Map");
     
     
-    int points[5][2] = {
-        {263,310},
-        {281,271},
-        {263,229},
-        {212,303},
-        {221,278},
-    };
+
     
    
-    int i = 0;
+    //int i = 0;
+    ros::Rate rate(3);
     while(ros::ok()) {
 
         if (!cv_map.empty()) imshow("Map", cv_map);
        	
-        if (i >= 5) return 0;
+     /*   if (i >= 5) return 0;
        
         if (!cv_map.empty()) {
             ROS_INFO("i: %d", i);
@@ -149,8 +172,9 @@ int main(int argc, char** argv) {
             sleep(10);
             
         }    
-        
+        */
         ros::spinOnce();
+        rate.sleep();
 	
     }
     return 0;
