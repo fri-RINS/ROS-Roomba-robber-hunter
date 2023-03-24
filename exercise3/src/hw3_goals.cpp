@@ -8,6 +8,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <actionlib_msgs/GoalStatusArray.h>
+#include <actionlib_msgs/GoalID.h>
+#include <std_msgs/Empty.h>
 
 using namespace std;
 using namespace cv;
@@ -16,16 +18,20 @@ Mat cv_map;
 float map_resolution = 0;
 geometry_msgs::TransformStamped map_transform;
 ros::Time goal_set_time = ros::Time(0.0);
-int last_status = 0;
+int last_status = -1;
+bool allowedNewGoal;
 ros::Publisher goal_pub;
 ros::Subscriber map_sub;
+ros::Publisher cancel_pub;
+
 int i = 0;
 int points[5][2] = {
-    {263, 310},
+    
+    {262, 310},
     {281, 271},
     {263, 229},
-    {212, 303},
     {221, 278},
+    {212, 303},
 };
 
 void mapCallback(const nav_msgs::OccupancyGridConstPtr &msg_map)
@@ -131,40 +137,55 @@ void nextGoal(int x, int y)
 void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
 {
     // Access the last element in the status_list array and extract the status field
+    
     int status = 0;
+    if(cv_map.empty())
+        return;
+    
+    // Check status
     if (!msg->status_list.empty())
     {
-        status = msg->status_list[0].status;
+	status = msg->status_list[0].status;
+	//ROS_INFO("Received status: %d, last status: %d", status, last_status);
     }
-    ROS_INFO("Received status: %d", status);
-
-    if (status == 3 && last_status != 3 && i <= 5)
+    
+    // Check if goal has been reached
+    if (status == 3 && last_status != 3 && last_status != -1)
     {
         ROS_INFO("Goal number %d reached!!", i);
-        int nextY = points[i][1];
-        int nextX = points[i][0];
-        nextGoal(nextX, nextY);
         i++;
-        goal_set_time = ros::Time::now();
+        allowedNewGoal = true;
     }
-    else if (status == 0 && last_status != 0 && i <= 5)
+    
+    
+    //Check if timeout
+    else if (last_status == 1 && ros::Time::now() - goal_set_time > ros::Duration(30.0))
     {
-        int nextY = points[i][1];
-        int nextX = points[i][0];
-        nextGoal(nextX, nextY);
+        ROS_WARN("Goal %d not reached in 30 seconds", i);
+
+        actionlib_msgs::GoalID goal_id;
+        goal_id.id = "";
+        cancel_pub.publish(goal_id);
         i++;
-        goal_set_time = ros::Time::now();
-        ROS_INFO("First goal sent to robot!");
+        allowedNewGoal = true;
     }
-    else if (last_status == 1 && ros::Time::now() - goal_set_time > ros::Duration(20.0) && i <= 5)
+    
+    
+    
+    // Publish new goal if allowed
+    if (allowedNewGoal && i < 5) 
     {
-        ROS_WARN("Goal %d not reached in 20 seconds", i);
-        int nextY = points[i][1];
+    	int nextY = points[i][1];
         int nextX = points[i][0];
+        ROS_INFO("Goal %d sent to robot!", i);
         nextGoal(nextX, nextY);
-        i++;
         goal_set_time = ros::Time::now();
+        allowedNewGoal = false;
+        
+        
     }
+    
+    
     last_status = status;
 }
 
@@ -177,18 +198,27 @@ int main(int argc, char **argv)
     map_sub = n.subscribe("map", 10, &mapCallback);
     goal_pub = n.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 10);
     ros::Subscriber sub = n.subscribe("/move_base/status", 100, &messageCallback);
-
+    cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel", 1);
+    
+    
     namedWindow("Map");
+    
+    actionlib_msgs::GoalID goal_id;
+    goal_id.id = "";
+    cancel_pub.publish(goal_id);
+    allowedNewGoal = true;
 
     // int i = 0;
-    ros::Rate rate(3);
+    ros::Rate rate(0.5);
     while (ros::ok())
     {
 
         if (!cv_map.empty())
             imshow("Map", cv_map);
+            
+        if (i >= 5) return 0;
 
-        /*   if (i >= 5) return 0;
+        /*   
 
            if (!cv_map.empty()) {
                ROS_INFO("i: %d", i);
