@@ -38,6 +38,7 @@ class face_localizer:
         # Marker array object used for showing markers in Rviz
         self.marker_array = MarkerArray()
         self.marker_num = 1
+        self.clusters = []
 
         # Subscribe to the image and/or depth topic
         # self.image_sub = rospy.Subscriber("/camera/rgb/image_raw", Image, self.image_callback)
@@ -50,6 +51,38 @@ class face_localizer:
         # Object we use for transforming between coordinate frames
         self.tf_buf = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buf)
+
+    def euclidean_distance(self,point1, point2):
+        """Function to calculate euclidean distance between two points."""
+        
+        return np.sqrt((point1.x - point2[0])**2 + (point1.y - point2[1])**2 + (point1.z - point2[2])**2) 
+  
+    def find_closest_cluster(self,point, clusters, threshold):
+        """Function to find the closest cluster to a point."""
+        n = (len(clusters))
+        if n > 0:
+            for i in range(len(clusters)):
+                sum_position = [0, 0, 0]
+                for posit in clusters[i]:
+                    sum_position[0] += posit.x
+                    sum_position[1] += posit.y
+                    sum_position[2] += posit.z
+
+            # Calculate the mean position and orientation
+            mean_position = [sum_position[0] / len(clusters[i]), sum_position[1] / len(clusters[i]), sum_position[2] / len(clusters[i])]
+            distance = self.euclidean_distance(point, mean_position)
+            if distance < threshold:
+                return i
+        return None
+
+    def add_point_to_cluster(self,point, clusters, threshold):
+        """Function to add a point to a cluster if it is close enough."""
+        closest_cluster = self.find_closest_cluster(point, clusters, threshold)
+        if closest_cluster is not None:
+            if len(clusters[closest_cluster]) < 5:
+                clusters[closest_cluster].append(point)
+        else:
+            clusters.append([point])
 
     def get_pose(self, coords, dist, stamp):
         # Calculate the position of the detected face
@@ -173,35 +206,38 @@ class face_localizer:
                     (x1, x2, y1, y2), face_distance, depth_time)
 
                 if pose is not None:
+                    self.add_point_to_cluster(pose.position, self.clusters, 2)
+
+                    print("clusters::")
+                    #print(self.clusters)
+                    print(len(self.clusters))
 
                     # Create a marker used for visualization
-                    self.marker_num += 1
-                    marker = Marker()
-                    marker.header.stamp = rospy.Time(0)
-                    marker.header.frame_id = 'map'
-                    marker.pose = pose
-                    marker.type = Marker.CUBE
-                    marker.action = Marker.ADD
-                    marker.frame_locked = False
-                    marker.lifetime = rospy.Duration.from_sec(10)
-                    marker.id = self.marker_num
-                    marker.scale = Vector3(0.1, 0.1, 0.1)
-                    marker.color = ColorRGBA(0, 1, 0, 1)
-                    distances = np.array([])
-                    for m in self.marker_array.markers:
-                        pose2 = m.pose
-                        pose1 = pose
-                        point1 = pose1.position
-                        point2 = pose2.position
-                        distance = np.sqrt(
-                            (point1.x - point2.x)**2 + (point1.y - point2.y)**2 + (point1.z - point2.z)**2)
-                        distances = np.append(distances, distance)
-                    if distances.size>0:
-                    	minn = np.amin(distances)
-                    else:
-                    	minn = 100
-                    	
-                    if minn > 0.5:
+                    for clu in self.clusters:
+                        #self.marker_num += 1
+                        sum_position = [0, 0, 0]
+                        for posit in clu:
+                            sum_position[0] += posit.x
+                            sum_position[1] += posit.y
+                            sum_position[2] += posit.z
+
+                        # Calculate the mean position and orientation
+                        mean_position = [sum_position[0] / len(clu), sum_position[1] / len(clu), sum_position[2] / len(clu)]
+                        pose.position.x = mean_position[0]
+                        pose.position.y = mean_position[1]
+                        pose.position.z = mean_position[2]
+                        marker = Marker()
+                        marker.header.stamp = rospy.Time(0)
+                        marker.header.frame_id = 'map'
+                        marker.pose = pose
+                        marker.type = Marker.CUBE
+                        marker.action = Marker.ADD
+                        marker.frame_locked = False
+                        marker.lifetime = rospy.Duration.from_sec(10)
+                        marker.id = self.marker_num
+                        marker.scale = Vector3(0.1, 0.1, 0.1)
+                        marker.color = ColorRGBA(0, 1, 0, 1)
+                        #distances = np.array([])
                         self.marker_array.markers.append(marker)
                         print("new marker appended")
 
