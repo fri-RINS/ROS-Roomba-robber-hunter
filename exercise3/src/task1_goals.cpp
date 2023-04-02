@@ -1,5 +1,4 @@
 #include "ros/ros.h"
-
 #include <nav_msgs/GetMap.h>
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Point.h>
@@ -16,6 +15,7 @@
 #include <std_msgs/Empty.h>
 #include "exercise2/PlaySound.h"
 #include <tf/transform_datatypes.h>
+#include <geometry_msgs/Twist.h>
 
 using namespace std;
 using namespace cv;
@@ -31,7 +31,9 @@ ros::ServiceClient sound_client;
 ros::Subscriber map_sub;
 ros::Subscriber face_marker_sub;
 ros::Publisher cancel_pub;
+ros::Publisher cmd_vel_pub;
 int num_goals = 12;
+float rate_freq = 0.5;
 
 int i = 0;
 int points[12][2] = {
@@ -114,7 +116,7 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr &msg_map)
 
 void nextGoal(int x, int y)
 {
-
+    ros::Rate rate(rate_freq);
     int v = (int)cv_map.at<unsigned char>(y, x);
 
     // check if point is reachable
@@ -126,6 +128,17 @@ void nextGoal(int x, int y)
 
     geometry_msgs::Point pt;
     geometry_msgs::Point transformed_pt;
+    geometry_msgs::Twist twist;
+
+    float time = 4.0;
+    twist.angular.z = 1.0;
+    for (float j = 0; j < time; j+= rate_freq)
+    {
+        cmd_vel_pub.publish(twist);
+        rate.sleep();
+    }
+    twist.angular.z = 0.0;
+    cmd_vel_pub.publish(twist);
 
     // convert point to image coordinate system
     pt.x = (float)x * map_resolution;
@@ -230,6 +243,7 @@ int main(int argc, char **argv)
     face_marker_sub = n.subscribe("face_markers", 10, &approach_and_greet);
     sound_client = n.serviceClient<exercise2::PlaySound>("play_sound");
     namedWindow("Map");
+    cmd_vel_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 100);
     
     actionlib_msgs::GoalID goal_id;
     goal_id.id = "";
@@ -237,7 +251,7 @@ int main(int argc, char **argv)
     allowedNewGoal = true;
 
     // int i = 0;
-    ros::Rate rate(0.5);
+    ros::Rate rate(rate_freq);
     while (ros::ok())
     {
 
