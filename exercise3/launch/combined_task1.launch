@@ -42,6 +42,14 @@
   <node pkg="exercise4" type="play_sound.py" name="play_sound"  output="screen">
   </node>
   
+  <!-- task1 goals -->
+  <node pkg="exercise3" type="task1_goals" name="task1_goals"  output="screen">
+  </node>
+  
+  <!-- face localizer dnn -->
+  <node pkg="exercise4" type="face_localizer_dnn" name="face_localizer_dnn"  output="screen">
+  </node>
+  
   
   <!-- Map server -->
   <arg name="map_file" default="$(find exercise3)/maps/first_map.yaml"/>

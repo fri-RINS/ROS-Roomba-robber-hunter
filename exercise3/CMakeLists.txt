@@ -3,6 +3,7 @@ project(exercise3)
 
 find_package(catkin REQUIRED COMPONENTS
 	roscpp
+	exercise2
 	cv_bridge
 	sensor_msgs
 	nav_msgs
@@ -21,4 +22,6 @@ add_executable(map_goals src/map_goals.cpp)
 target_link_libraries(map_goals ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_executable(hw3_goals src/hw3_goals.cpp)
 target_link_libraries(hw3_goals ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_executable(task1_goals src/task1_goals.cpp)
+target_link_libraries(task1_goals ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 

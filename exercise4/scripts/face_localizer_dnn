@@ -252,12 +252,13 @@ class face_localizer:
                     (x1, x2, y1, y2), face_distance, depth_time)
 
                 if pose is not None:
-                    self.add_point_to_cluster(pose.position, self.clusters, 2)
+                    self.add_point_to_cluster(pose.position, self.clusters, 1)
 
                     print("clusters::")
                     # print(self.clusters)
                     print(len(self.clusters))
                     
+                    publish = False
                     # Create a marker used for visualization
                     for clust in self.clusters:
                         if not clust.show_marker:
@@ -295,8 +296,9 @@ class face_localizer:
                         self.marker_array.markers.append(marker)
                         print("new marker appended")
                         clust.show_marker = False
-
-                    self.markers_pub.publish(self.marker_array)
+                        publish = True
+                    if publish:
+                        self.markers_pub.publish(self.marker_array)
 
     def depth_callback(self, data):
 

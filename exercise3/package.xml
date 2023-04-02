@@ -9,12 +9,14 @@
   <license>BSD</license>
 
   <build_depend>roscpp</build_depend>
+  <build_depend>exercise2</build_depend>
   <build_depend>cv_bridge</build_depend>
   <build_depend>tf</build_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>cv_bridge</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>gazebo_ros</run_depend>
+  <run_depend>exercise2</run_depend>
 
   <buildtool_depend>catkin</buildtool_depend>
 
