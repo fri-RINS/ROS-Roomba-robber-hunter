@@ -15,6 +15,7 @@ from geometry_msgs.msg import PointStamped, Vector3, Pose
 from cv_bridge import CvBridge, CvBridgeError
 from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import ColorRGBA
+import time
 
 
 class Cluster:
@@ -288,7 +289,7 @@ class face_localizer:
                         marker.type = Marker.CUBE
                         marker.action = Marker.ADD
                         marker.frame_locked = False
-                        marker.lifetime = rospy.Duration.from_sec(100)
+                        marker.lifetime = rospy.Duration.from_sec(300)
                         marker.id = self.marker_num
                         marker.scale = Vector3(0.1, 0.1, 0.1)
                         marker.color = ColorRGBA(0, 1, 0, 1)
@@ -323,6 +324,7 @@ class face_localizer:
 
 def main():
 
+    time.sleep(2)
     face_finder = face_localizer()
     rate = rospy.Rate(1)
     while not rospy.is_shutdown():

@@ -16,6 +16,7 @@
 #include "exercise2/PlaySound.h"
 #include <tf/transform_datatypes.h>
 #include <geometry_msgs/Twist.h>
+#include <cmath>
 
 using namespace std;
 using namespace cv;
@@ -114,9 +115,27 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr &msg_map)
     }
 }
 
+// ROTATE THE ROBOT
+void rotate(int direction)
+{
+    geometry_msgs::Twist twist;
+
+    const double angular_speed = 0.5;
+    twist.angular.z = angular_speed * direction;
+    
+    const double time_for_circle = 2 * M_PI / angular_speed;
+    const ros::Time start_time = ros::Time::now();
+    while (ros::Time::now() < start_time + ros::Duration(time_for_circle))
+    {
+        cmd_vel_pub.publish(twist);
+    }
+    twist.angular.z = 0.0;
+    cmd_vel_pub.publish(twist);
+}
+
 void nextGoal(int x, int y)
 {
-    ros::Rate rate(rate_freq);
+    ros::Rate rateR(2);
     int v = (int)cv_map.at<unsigned char>(y, x);
 
     // check if point is reachable
@@ -128,17 +147,12 @@ void nextGoal(int x, int y)
 
     geometry_msgs::Point pt;
     geometry_msgs::Point transformed_pt;
-    geometry_msgs::Twist twist;
-
-    float time = 4.0;
-    twist.angular.z = 1.0;
-    for (float j = 0; j < time; j+= rate_freq)
-    {
-        cmd_vel_pub.publish(twist);
-        rate.sleep();
-    }
-    twist.angular.z = 0.0;
-    cmd_vel_pub.publish(twist);
+    
+    //ROTATE
+    ROS_INFO("Rotating the robot.");
+    rotate(1);
+    //rotate(-1);
+    ROS_INFO("Finished rotating.");
 
     // convert point to image coordinate system
     pt.x = (float)x * map_resolution;
@@ -245,12 +259,14 @@ int main(int argc, char **argv)
     namedWindow("Map");
     cmd_vel_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 100);
     
+    rotate(1);
     actionlib_msgs::GoalID goal_id;
     goal_id.id = "";
     cancel_pub.publish(goal_id);
     allowedNewGoal = true;
 
     // int i = 0;
+    
     ros::Rate rate(rate_freq);
     while (ros::ok())
     {
