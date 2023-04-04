@@ -40,6 +40,8 @@ int x = 0;
 int y = 0;
 int z = 0;
 int i = 0;
+bool next_goal_is_midpoint = false;
+
 int points[12][2] = {
     {226, 273},
     {243, 287},
@@ -161,7 +163,6 @@ void nextGoal(int x, int y)
 
     geometry_msgs::Point pt;
     geometry_msgs::Point transformed_pt;
-
     // ROTATE
     ROS_INFO("Rotating the robot.");
     rotate(1);
@@ -188,6 +189,7 @@ void nextGoal(int x, int y)
 
     goal_pub.publish(goal);
 }
+
 void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)
 {
     // Extract the latest position
@@ -226,9 +228,34 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     geometry_msgs::Pose pose = create_pose(x, y, z);
     geometry_msgs::Point Midpoint = calculateMidpoint(pose, latestMarkerPose);
     ROS_INFO("Created midpoint message: x=%f, y=%f, z=%f", Midpoint.x, Midpoint.y, Midpoint.z);
+
+    // calculate vector from midpoint to face position
+    geometry_msgs::Vector3 vec;
+    vec.x = latestMarkerPose.position.x - Midpoint.x;
+    vec.y = latestMarkerPose.position.y - Midpoint.y;
+    vec.z = latestMarkerPose.position.z - Midpoint.z;
+
+    // calculate quaternion from vector
+    tf2::Quaternion quat;
+    quat.setRPY(0, 0, atan2(vec.y, vec.x));
+
+    // create goal message
+    geometry_msgs::PoseStamped goal;
+    goal.header.frame_id = "map";
+    goal.header.stamp = ros::Time::now();
+    goal.pose.position.x = Midpoint.x;
+    goal.pose.position.y = Midpoint.y;
+    goal.pose.orientation.x = quat.x();
+    goal.pose.orientation.y = quat.y();
+    goal.pose.orientation.z = quat.z();
+    goal.pose.orientation.w = quat.w();
+    goal_pub.publish(goal);
+
+    ROS_INFO("Approaching and greeting with orientation. w:%lf z:%lf", quat.w(), quat.z());
     exercise2::PlaySound srv;
     srv.request.message = "Hello there";
     sound_client.call(srv);
+
 }
 
 void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)

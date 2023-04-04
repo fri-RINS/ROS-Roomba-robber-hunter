@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "unordered_map": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "condition_variable": "cpp",
+        "cmath": "cpp",
+        "chrono": "cpp"
+    }
+}
