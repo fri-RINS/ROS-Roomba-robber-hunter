@@ -123,7 +123,7 @@ void rotate(int direction)
     const double angular_speed = 0.5;
     twist.angular.z = angular_speed * direction;
     
-    const double time_for_circle = 2 * M_PI / angular_speed;
+    const double time_for_circle = 2 * M_PI / (angular_speed * direction);
     const ros::Time start_time = ros::Time::now();
     while (ros::Time::now() < start_time + ros::Duration(time_for_circle))
     {
@@ -131,6 +131,7 @@ void rotate(int direction)
     }
     twist.angular.z = 0.0;
     cmd_vel_pub.publish(twist);
+    last_status = -1;
 }
 
 void nextGoal(int x, int y)
@@ -225,7 +226,8 @@ void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
         allowedNewGoal = true;
     }
     
-    
+    ROS_INFO("GOAL %d", allowedNewGoal);
+    ROS_INFO("STATUS %d, %d", status, last_status);
     
     // Publish new goal if allowed
     if (allowedNewGoal) 

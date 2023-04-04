@@ -235,14 +235,14 @@ class face_localizer:
                 face_region = rgb_image[y1:y2, x1:x2]
 
                 # Visualize the extracted face
-                # cv2.imshow("ImWindow", face_region)
-                # cv2.waitKey(1)
+                #cv2.imshow("ImWindow", face_region)
+                #cv2.waitKey(1)
 
                 # Find the distance to the detected face
                 face_distance = float(np.nanmean(depth_image[y1:y2, x1:x2]))
                 print('Distance to face', face_distance)
                 
-                if np.isnan(face_distance):
+                if np.isnan(face_distance) and face_distance > 1.5:
                     continue
 
                 # Get the time that the depth image was recieved
