@@ -119,7 +119,7 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr &msg_map)
 void rotate(int direction)
 {
     geometry_msgs::Twist twist;
-
+    ros::Rate rateR(2);
     const double angular_speed = 0.5;
     twist.angular.z = angular_speed * direction;
     
@@ -128,15 +128,17 @@ void rotate(int direction)
     while (ros::Time::now() < start_time + ros::Duration(time_for_circle))
     {
         cmd_vel_pub.publish(twist);
+        //ROS_INFO("ROROROORO...");
+        rateR.sleep();
     }
     twist.angular.z = 0.0;
     cmd_vel_pub.publish(twist);
-    //last_status = -1;
+    last_status = -1;
 }
 
 void nextGoal(int x, int y)
 {
-    ros::Rate rateR(2);
+    
     int v = (int)cv_map.at<unsigned char>(y, x);
 
     // check if point is reachable
@@ -226,8 +228,8 @@ void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
         allowedNewGoal = true;
     }
     
-    //ROS_INFO("GOAL %d", allowedNewGoal);
-    //ROS_INFO("STATUS %d, %d", status, last_status);
+    ROS_INFO("GOAL %d", allowedNewGoal);
+    ROS_INFO("STATUS %d, %d", status, last_status);
     
     // Publish new goal if allowed
     if (allowedNewGoal) 

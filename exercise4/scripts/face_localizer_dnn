@@ -296,7 +296,7 @@ class face_localizer:
                         # distances = np.array([])
                         self.marker_array.markers.append(marker)
                         print("new marker appended")
-                        cv2.imshow("ImWindow", face_region)
+                        # cv2.imshow("ImWindow", face_region)
                         
                         clust.show_marker = False
                         publish = True
