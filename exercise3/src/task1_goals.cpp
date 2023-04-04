@@ -18,6 +18,8 @@
 #include <geometry_msgs/Twist.h>
 #include <cmath>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <move_base_msgs/MoveBaseAction.h>
+#include <actionlib/client/simple_action_client.h>
 
 using namespace std;
 using namespace cv;
@@ -129,7 +131,7 @@ void mapCallback(const nav_msgs::OccupancyGridConstPtr &msg_map)
 }
 
 // ROTATE THE ROBOT
-void rotate(int direction)
+void rotate(float direction)
 {
     geometry_msgs::Twist twist;
     ros::Rate rateR(2);
@@ -149,8 +151,13 @@ void rotate(int direction)
     last_status = -1;
 }
 
-void nextGoal(int x, int y)
+void nextGoal()
 {
+    
+    int y = points[i % 12][1];
+    int x = points[i % 12][0];
+    // nextGoal(nextX, nextY);
+    
 
     int v = (int)cv_map.at<unsigned char>(y, x);
 
@@ -165,9 +172,13 @@ void nextGoal(int x, int y)
     geometry_msgs::Point transformed_pt;
     // ROTATE
     ROS_INFO("Rotating the robot.");
-    rotate(1);
-    // rotate(-1);
+    rotate(1.0);
+    //rotate(-1.0);
     ROS_INFO("Finished rotating.");
+
+    goal_set_time = ros::Time::now();
+    allowedNewGoal = false;
+    ROS_INFO("Goal %d sent to robot!", i);
 
     // convert point to image coordinate system
     pt.x = (float)x * map_resolution;
@@ -224,38 +235,89 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     visualization_msgs::Marker latestMarker = msg->markers.back();
     geometry_msgs::Pose latestMarkerPose = latestMarker.pose;
     ROS_INFO("JUHU MARKER JE TU");
-    ROS_INFO("Latest marker point: x=%f, y=%f, z=%f", latestMarkerPose.position.x, latestMarkerPose.position.y, latestMarkerPose.position.z);
-    geometry_msgs::Pose pose = create_pose(x, y, z);
-    geometry_msgs::Point Midpoint = calculateMidpoint(pose, latestMarkerPose);
-    ROS_INFO("Created midpoint message: x=%f, y=%f, z=%f", Midpoint.x, Midpoint.y, Midpoint.z);
+
+    actionlib_msgs::GoalID goal_id;
+    goal_id.id = "";
+    cancel_pub.publish(goal_id);
+    // ROS_INFO("Latest marker point: x=%f, y=%f, z=%f", latestMarkerPose.position.x, latestMarkerPose.position.y, latestMarkerPose.position.z);
+    // geometry_msgs::Pose pose = create_pose(x, y, z);
+    // geometry_msgs::Point Midpoint = calculateMidpoint(pose, latestMarkerPose);
+    // ROS_INFO("Created midpoint message: x=%f, y=%f, z=%f", Midpoint.x, Midpoint.y, Midpoint.z);
 
     // calculate vector from midpoint to face position
-    geometry_msgs::Vector3 vec;
-    vec.x = latestMarkerPose.position.x - Midpoint.x;
-    vec.y = latestMarkerPose.position.y - Midpoint.y;
-    vec.z = latestMarkerPose.position.z - Midpoint.z;
+    // geometry_msgs::Vector3 vec;
+    // vec.x = latestMarkerPose.position.x - Midpoint.x;
+    // vec.y = latestMarkerPose.position.y - Midpoint.y;
+    // vec.z = latestMarkerPose.position.z - Midpoint.z;
 
-    // calculate quaternion from vector
-    tf2::Quaternion quat;
-    quat.setRPY(0, 0, atan2(vec.y, vec.x));
+    // // calculate quaternion from vector
+    // tf2::Quaternion quat;
+    // quat.setRPY(0, 0, atan2(vec.y, vec.x));
 
-    // create goal message
-    geometry_msgs::PoseStamped goal;
-    goal.header.frame_id = "map";
-    goal.header.stamp = ros::Time::now();
-    goal.pose.position.x = Midpoint.x;
-    goal.pose.position.y = Midpoint.y;
-    goal.pose.orientation.x = quat.x();
-    goal.pose.orientation.y = quat.y();
-    goal.pose.orientation.z = quat.z();
-    goal.pose.orientation.w = quat.w();
-    goal_pub.publish(goal);
+    // // create goal message
+    // geometry_msgs::PoseStamped goal;
+    // goal.header.frame_id = "map";
+    // goal.header.stamp = ros::Time::now();
+    // goal.pose.position.x = Midpoint.x;
+    // goal.pose.position.y = Midpoint.y;
+    // goal.pose.orientation.x = quat.x();
+    // goal.pose.orientation.y = quat.y();
+    // goal.pose.orientation.z = quat.z();
+    // goal.pose.orientation.w = quat.w();
+    // goal_pub.publish(goal);
 
-    ROS_INFO("Approaching and greeting with orientation. w:%lf z:%lf", quat.w(), quat.z());
+    // ROS_INFO("Approaching and greeting with orientation. w:%lf z:%lf", quat.w(), quat.z());
+    actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> ac("move_base", true);
+
+    // Wait for the action server to come up
+    while(!ac.waitForServer(ros::Duration(5.0))){
+        ROS_INFO("Waiting for the move_base action server to come up");
+    }
+
+    // Set the goal position
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.frame_id = "map";
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.pose.position.x = latestMarkerPose.position.x;
+    goal.target_pose.pose.position.y = latestMarkerPose.position.y;
+    goal.target_pose.pose.orientation.w = 1.0;
+
+    // Set a desired distance from the goal
+    double desired_distance = 0.3; // meters
+    double distance_to_goal = sqrt(pow(goal.target_pose.pose.position.x, 2) + pow(goal.target_pose.pose.position.y, 2));
+    double scaling_factor = (distance_to_goal - desired_distance) / distance_to_goal;
+    goal.target_pose.pose.position.x *= scaling_factor;
+    goal.target_pose.pose.position.y *= scaling_factor;
+
+    // Send the goal to the navigation stack
+    ac.sendGoal(goal);
+    ROS_INFO("Approaching the face");
+    // Wait for the robot to reach the goal
+    ac.waitForResult();
+
+    // Check the status of the goal
+    if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
+        ROS_INFO("The robot has approached the face");
+    }
+    else{
+        ROS_INFO("The robot has failed to reach the goal");
+    }
+
+        // Send a stop goal to the robot
+    
+
+    // Pause the execution of the code for 2 seconds
+    ac.cancelGoal();
+    ros::Duration(1.0).sleep();
+
     exercise2::PlaySound srv;
     srv.request.message = "Hello there";
+    ROS_INFO("Saying hello");
     sound_client.call(srv);
 
+    ros::Duration(1.0).sleep();
+
+    nextGoal();
 }
 
 void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
@@ -293,18 +355,13 @@ void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
         allowedNewGoal = true;
     }
 
-    ROS_INFO("GOAL %d", allowedNewGoal);
-    ROS_INFO("STATUS %d, %d", status, last_status);
+    // ROS_INFO("GOAL %d", allowedNewGoal);
+    // ROS_INFO("STATUS %d, %d", status, last_status);
 
     // Publish new goal if allowed
     if (allowedNewGoal)
     {
-        int nextY = points[i % 12][1];
-        int nextX = points[i % 12][0];
-        ROS_INFO("Goal %d sent to robot!", i);
-        nextGoal(nextX, nextY);
-        goal_set_time = ros::Time::now();
-        allowedNewGoal = false;
+        nextGoal();
     }
 
     last_status = status;
@@ -324,7 +381,7 @@ int main(int argc, char **argv)
     sound_client = n.serviceClient<exercise2::PlaySound>("play_sound");
     namedWindow("Map");
     cmd_vel_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 100);
-    ros::Subscriber sub_to_pose = n.subscribe("/amcl_pose", 10, &amclPoseCallback);
+    // ros::Subscriber sub_to_pose = n.subscribe("/amcl_pose", 10, &amclPoseCallback);
 
     // rotate(1);
     actionlib_msgs::GoalID goal_id;

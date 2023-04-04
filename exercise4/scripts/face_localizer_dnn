@@ -240,10 +240,13 @@ class face_localizer:
 
                 # Find the distance to the detected face
                 face_distance = float(np.nanmean(depth_image[y1:y2, x1:x2]))
-                print('Distance to face', face_distance)
                 
-                if np.isnan(face_distance) and face_distance > 1.5:
+                
+                if np.isnan(face_distance) or face_distance > 1.5:
+                    print('Distance to face (discarded)', face_distance)
                     continue
+
+                print('Distance to face', face_distance)
 
                 # Get the time that the depth image was recieved
                 depth_time = depth_image_message.header.stamp
@@ -252,7 +255,7 @@ class face_localizer:
                 pose = self.get_pose(
                     (x1, x2, y1, y2), face_distance, depth_time)
 
-                if pose is not None:
+                if pose is not None and pose.position.x is not None and pose.position.y is not None:
                     self.add_point_to_cluster(pose.position, self.clusters, 1)
 
                     print("clusters::")
