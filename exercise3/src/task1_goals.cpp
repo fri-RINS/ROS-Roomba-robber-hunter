@@ -131,7 +131,7 @@ void rotate(int direction)
     }
     twist.angular.z = 0.0;
     cmd_vel_pub.publish(twist);
-    last_status = -1;
+    //last_status = -1;
 }
 
 void nextGoal(int x, int y)
@@ -226,8 +226,8 @@ void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
         allowedNewGoal = true;
     }
     
-    ROS_INFO("GOAL %d", allowedNewGoal);
-    ROS_INFO("STATUS %d, %d", status, last_status);
+    //ROS_INFO("GOAL %d", allowedNewGoal);
+    //ROS_INFO("STATUS %d, %d", status, last_status);
     
     // Publish new goal if allowed
     if (allowedNewGoal) 
@@ -261,7 +261,7 @@ int main(int argc, char **argv)
     namedWindow("Map");
     cmd_vel_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 100);
     
-    rotate(1);
+    //rotate(1);
     actionlib_msgs::GoalID goal_id;
     goal_id.id = "";
     cancel_pub.publish(goal_id);

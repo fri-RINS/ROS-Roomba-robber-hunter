@@ -235,8 +235,8 @@ class face_localizer:
                 face_region = rgb_image[y1:y2, x1:x2]
 
                 # Visualize the extracted face
-                #cv2.imshow("ImWindow", face_region)
-                #cv2.waitKey(1)
+                # cv2.imshow("ImWindow", face_region)
+                # cv2.waitKey(1)
 
                 # Find the distance to the detected face
                 face_distance = float(np.nanmean(depth_image[y1:y2, x1:x2]))
@@ -296,6 +296,8 @@ class face_localizer:
                         # distances = np.array([])
                         self.marker_array.markers.append(marker)
                         print("new marker appended")
+                        cv2.imshow("ImWindow", face_region)
+                        
                         clust.show_marker = False
                         publish = True
                     if publish:
