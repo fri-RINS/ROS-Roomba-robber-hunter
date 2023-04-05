@@ -43,6 +43,7 @@ int y = 0;
 int z = 0;
 int i = 0;
 bool next_goal_is_midpoint = false;
+int stevilo_obrazov = 0;
 
 int points[12][2] = {
     {226, 273},
@@ -153,11 +154,10 @@ void rotate(float direction)
 
 void nextGoal()
 {
-    
+
     int y = points[i % 12][1];
     int x = points[i % 12][0];
     // nextGoal(nextX, nextY);
-    
 
     int v = (int)cv_map.at<unsigned char>(y, x);
 
@@ -173,7 +173,7 @@ void nextGoal()
     // ROTATE
     ROS_INFO("Rotating the robot.");
     rotate(1.0);
-    //rotate(-1.0);
+    // rotate(-1.0);
     ROS_INFO("Finished rotating.");
 
     goal_set_time = ros::Time::now();
@@ -235,6 +235,7 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     visualization_msgs::Marker latestMarker = msg->markers.back();
     geometry_msgs::Pose latestMarkerPose = latestMarker.pose;
     ROS_INFO("JUHU MARKER JE TU");
+    stevilo_obrazov++;
 
     actionlib_msgs::GoalID goal_id;
     goal_id.id = "";
@@ -270,7 +271,8 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> ac("move_base", true);
 
     // Wait for the action server to come up
-    while(!ac.waitForServer(ros::Duration(5.0))){
+    while (!ac.waitForServer(ros::Duration(5.0)))
+    {
         ROS_INFO("Waiting for the move_base action server to come up");
     }
 
@@ -291,20 +293,21 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
 
     // Send the goal to the navigation stack
     ac.sendGoal(goal);
-    ROS_INFO("Approaching the face");
+    ROS_INFO("Approaching the face number: %d", stevilo_obrazov);
     // Wait for the robot to reach the goal
     ac.waitForResult();
 
     // Check the status of the goal
-    if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
-        ROS_INFO("The robot has approached the face");
+    if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+    {
+        ROS_INFO("The robot has approached the face number: %d", stevilo_obrazov);
     }
-    else{
+    else
+    {
         ROS_INFO("The robot has failed to reach the goal");
     }
 
-        // Send a stop goal to the robot
-    
+    // Send a stop goal to the robot
 
     // Pause the execution of the code for 2 seconds
     ac.cancelGoal();
@@ -316,6 +319,10 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     sound_client.call(srv);
 
     ros::Duration(1.0).sleep();
+    if (stevilo_obrazov == 3)
+    {
+        ROS_INFO("Robot has detected every face, now we can stop")
+    }
 
     nextGoal();
 }
