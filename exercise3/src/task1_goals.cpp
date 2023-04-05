@@ -36,29 +36,51 @@ ros::Subscriber map_sub;
 ros::Subscriber face_marker_sub;
 ros::Publisher cancel_pub;
 ros::Publisher cmd_vel_pub;
-int num_goals = 12;
 float rate_freq = 0.5;
 int x = 0;
 int y = 0;
 int z = 0;
 int i = 0;
-bool next_goal_is_midpoint = false;
+bool approaching_face = false;
 int stevilo_obrazov = 0;
 
-int points[12][2] = {
-    {226, 273},
-    {243, 287},
-    {241, 302},
-    {264, 306},
-    {311, 293},
-    {272, 266},
-    {295, 262},
-    {264, 229},
-    {292, 230},
-    {244, 225},
-    {221, 239},
-    {235, 263},
+
+//x: 243, y: 304 3.
+//x: 268, y: 306 4
+//x: 309, y: 301
+//x: 304, y: 285
+//x: 268, y: 275
+//x: 272, y: 260
+//x: 293, y: 259
+//x: 294, y: 232
+//x: 267, y: 245
+//x: 246, y: 228
+//x: 216, y: 220
+//x: 233, y: 242
+//x: 244, y: 264
+//x: 214, y: 275
+//x: 240, y: 281
+int num_goals = 16;
+
+int points[16][2] = {
+    {243, 304},
+    {268, 306},
+    {309, 301},
+    {304, 285},
+    {290, 265},
+    {268, 275},
+    {272, 260},
+    {293, 259},
+    {294, 245},
+    {267, 232},
+    {246, 228},
+    {216, 220},
+    {233, 242},
+    {244, 264},
+    {214, 275},
+    {240, 281},
 };
+
 geometry_msgs::Pose create_pose(double x, double y, double z)
 {
     geometry_msgs::Pose pose;
@@ -136,7 +158,7 @@ void rotate(float direction)
 {
     geometry_msgs::Twist twist;
     ros::Rate rateR(2);
-    const double angular_speed = 0.5;
+    const double angular_speed = 0.25;
     twist.angular.z = angular_speed * direction;
 
     const double time_for_circle = 2 * M_PI / (angular_speed * direction);
@@ -155,8 +177,8 @@ void rotate(float direction)
 void nextGoal()
 {
 
-    int y = points[i % 12][1];
-    int x = points[i % 12][0];
+    int y = points[i % num_goals][1];
+    int x = points[i % num_goals][0];
     // nextGoal(nextX, nextY);
 
     int v = (int)cv_map.at<unsigned char>(y, x);
@@ -170,14 +192,25 @@ void nextGoal()
 
     geometry_msgs::Point pt;
     geometry_msgs::Point transformed_pt;
-    // ROTATE
-    ROS_INFO("Rotating the robot.");
-    rotate(1.0);
-    // rotate(-1.0);
-    ROS_INFO("Finished rotating.");
+    
+    if (!approaching_face)
+    {
+        // ROTATE
+        ROS_INFO("Rotating the robot.");
+        rotate(1.0);
+        // rotate(-1.0);
+        ROS_INFO("Finished rotating.");
+    } 
+    else  
+    {
+        approaching_face = false;
+        ROS_INFO("Not rotating.");
+    }
+
+    
 
     goal_set_time = ros::Time::now();
-    allowedNewGoal = false;
+
     ROS_INFO("Goal %d sent to robot!", i);
 
     // convert point to image coordinate system
@@ -197,7 +230,7 @@ void nextGoal()
     goal.header.stamp = ros::Time::now();
 
     ROS_INFO("Moving to (x: %f, y: %f)", transformed_pt.x, transformed_pt.y);
-
+    i++;
     goal_pub.publish(goal);
 }
 
@@ -239,6 +272,8 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
 
     actionlib_msgs::GoalID goal_id;
     goal_id.id = "";
+    ROS_INFO("Canceling goal number %d", i);
+    i--;
     cancel_pub.publish(goal_id);
     // ROS_INFO("Latest marker point: x=%f, y=%f, z=%f", latestMarkerPose.position.x, latestMarkerPose.position.y, latestMarkerPose.position.z);
     // geometry_msgs::Pose pose = create_pose(x, y, z);
@@ -285,14 +320,14 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     goal.target_pose.pose.orientation.w = 1.0;
 
     // Set a desired distance from the goal
-    double desired_distance = 0.3; // meters
+    double desired_distance = 0.5; // meters
     double distance_to_goal = sqrt(pow(goal.target_pose.pose.position.x, 2) + pow(goal.target_pose.pose.position.y, 2));
     double scaling_factor = (distance_to_goal - desired_distance) / distance_to_goal;
     goal.target_pose.pose.position.x *= scaling_factor;
     goal.target_pose.pose.position.y *= scaling_factor;
-
     // Send the goal to the navigation stack
     ac.sendGoal(goal);
+    approaching_face = true;
     ROS_INFO("Approaching the face number: %d", stevilo_obrazov);
     // Wait for the robot to reach the goal
     ac.waitForResult();
@@ -321,16 +356,15 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     ros::Duration(1.0).sleep();
     if (stevilo_obrazov == 3)
     {
-        ROS_INFO("Robot has detected every face, now we can stop")
+        ROS_INFO("Robot has detected every face, now we can stop");
     }
 
-    nextGoal();
 }
 
 void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
 {
     // Access the last element in the status_list array and extract the status field
-
+    ros::Rate rate(3);
     int status = 0;
     if (cv_map.empty())
         return;
@@ -339,14 +373,25 @@ void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
     if (!msg->status_list.empty())
     {
         status = msg->status_list[0].status;
-        // ROS_INFO("Received status: %d, last status: %d", status, last_status);
+        ROS_INFO("Received status: %d, last status: %d", status, last_status);
     }
 
     // Check if goal has been reached
-    if (status == 3 && last_status != 3 && last_status != -1)
+    if (last_status == -1)
+    {
+        ROS_INFO("Starting first goal, i=%d!", i);
+        allowedNewGoal = true;
+    }
+    else if (status == 3 && last_status != 3 && last_status != -1)
     {
         ROS_INFO("Goal number %d reached!!", i);
-        i++;
+        //i++;
+        allowedNewGoal = true;
+    }
+    else if (status == 3 && last_status == 3 && ros::Time::now() - goal_set_time > ros::Duration(10.0))
+    {
+        ROS_INFO("Status 3 timeout i=%d!!", i);
+        //i++;
         allowedNewGoal = true;
     }
 
@@ -358,7 +403,7 @@ void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
         actionlib_msgs::GoalID goal_id;
         goal_id.id = "";
         cancel_pub.publish(goal_id);
-        i++;
+        //i++;
         allowedNewGoal = true;
     }
 
@@ -369,6 +414,7 @@ void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
     if (allowedNewGoal)
     {
         nextGoal();
+        allowedNewGoal = false;
     }
 
     last_status = status;
