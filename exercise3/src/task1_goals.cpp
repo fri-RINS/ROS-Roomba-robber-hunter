@@ -60,25 +60,37 @@ int stevilo_obrazov = 0;
 //x: 244, y: 264
 //x: 214, y: 275
 //x: 240, y: 281
-int num_goals = 16;
 
-int points[16][2] = {
-    {243, 304},
-    {268, 306},
-    {309, 301},
-    {304, 285},
-    {290, 265},
-    {268, 275},
-    {272, 260},
-    {293, 259},
-    {294, 245},
-    {267, 232},
-    {246, 228},
-    {216, 220},
-    {233, 242},
-    {244, 264},
-    {214, 275},
-    {240, 281},
+/*
+251, y: 299
+269, y: 305
+287, y: 299
+297, y: 287
+281, y: 259
+267, y: 276
+266, y: 248
+285, y: 237
+248, y: 236
+215, y: 227
+240, y: 273
+218, y: 278
+*/
+
+int num_goals = 12;
+
+int points[12][2] = {
+    {251, 299},
+    {269, 305},
+    {287, 299},
+    {297, 287},
+    {281, 259},
+    {267, 276},
+    {266, 248},
+    {285, 237},
+    {248, 236},
+    {215, 227},
+    {240, 273},
+    {218, 278},
 };
 
 geometry_msgs::Pose create_pose(double x, double y, double z)
@@ -158,7 +170,7 @@ void rotate(float direction)
 {
     geometry_msgs::Twist twist;
     ros::Rate rateR(2);
-    const double angular_speed = 0.25;
+    const double angular_speed = 0.3;
     twist.angular.z = angular_speed * direction;
 
     const double time_for_circle = 2 * M_PI / (angular_speed * direction);
@@ -320,7 +332,7 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     goal.target_pose.pose.orientation.w = 1.0;
 
     // Set a desired distance from the goal
-    double desired_distance = 0.5; // meters
+    double desired_distance = 0.4; // meters
     double distance_to_goal = sqrt(pow(goal.target_pose.pose.position.x, 2) + pow(goal.target_pose.pose.position.y, 2));
     double scaling_factor = (distance_to_goal - desired_distance) / distance_to_goal;
     goal.target_pose.pose.position.x *= scaling_factor;
@@ -434,7 +446,7 @@ int main(int argc, char **argv)
     sound_client = n.serviceClient<exercise2::PlaySound>("play_sound");
     namedWindow("Map");
     cmd_vel_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 100);
-    // ros::Subscriber sub_to_pose = n.subscribe("/amcl_pose", 10, &amclPoseCallback);
+    //ros::Subscriber sub_to_pose = n.subscribe("/amcl_pose", 10, &amclPoseCallback);
 
     // rotate(1);
     actionlib_msgs::GoalID goal_id;
