@@ -385,7 +385,7 @@ void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
     if (!msg->status_list.empty())
     {
         status = msg->status_list[0].status;
-        ROS_INFO("Received status: %d, last status: %d", status, last_status);
+        //ROS_INFO("Received status: %d, last status: %d", status, last_status);
     }
 
     // Check if goal has been reached
