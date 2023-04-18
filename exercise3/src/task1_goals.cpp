@@ -5,6 +5,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <tf2/transform_datatypes.h>
+#include <tf/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -170,7 +171,7 @@ void rotate(float direction)
 {
     geometry_msgs::Twist twist;
     ros::Rate rateR(2);
-    const double angular_speed = 0.3;
+    const double angular_speed = 0.5;
     twist.angular.z = angular_speed * direction;
 
     const double time_for_circle = 2 * M_PI / (angular_speed * direction);
@@ -279,6 +280,7 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
 {
     visualization_msgs::Marker latestMarker = msg->markers.back();
     geometry_msgs::Pose latestMarkerPose = latestMarker.pose;
+    geometry_msgs::Pose latestMarkerPose_map;
     ROS_INFO("JUHU MARKER JE TU");
     stevilo_obrazov++;
 
@@ -325,14 +327,19 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
 
     // Set the goal position
     move_base_msgs::MoveBaseGoal goal;
+    
+    int curr_x = points[i][0];
+    int curr_y = points[i][1];
     goal.target_pose.header.frame_id = "map";
     goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.pose.position.x = latestMarkerPose.position.x;
-    goal.target_pose.pose.position.y = latestMarkerPose.position.y;
+    goal.target_pose.pose.position.x = (latestMarkerPose.position.x);
+    goal.target_pose.pose.position.y = (latestMarkerPose.position.y);
+    ROS_INFO("goal position x: %f and goal position y: %f ", goal.target_pose.pose.position.x , goal.target_pose.pose.position.y);
+    
     goal.target_pose.pose.orientation.w = 1.0;
-
+    
     // Set a desired distance from the goal
-    double desired_distance = 0.4; // meters
+    double desired_distance = 0.3; // meters
     double distance_to_goal = sqrt(pow(goal.target_pose.pose.position.x, 2) + pow(goal.target_pose.pose.position.y, 2));
     double scaling_factor = (distance_to_goal - desired_distance) / distance_to_goal;
     goal.target_pose.pose.position.x *= scaling_factor;
@@ -340,6 +347,7 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     // Send the goal to the navigation stack
     ac.sendGoal(goal);
     approaching_face = true;
+    ROS_INFO("goal position x: %f and goal position y: %f ", goal.target_pose.pose.position.x , goal.target_pose.pose.position.y);
     ROS_INFO("Approaching the face number: %d", stevilo_obrazov);
     // Wait for the robot to reach the goal
     ac.waitForResult();
@@ -385,7 +393,7 @@ void messageCallback(const actionlib_msgs::GoalStatusArray::ConstPtr &msg)
     if (!msg->status_list.empty())
     {
         status = msg->status_list[0].status;
-        ROS_INFO("Received status: %d, last status: %d", status, last_status);
+        //ROS_INFO("Received status: %d, last status: %d", status, last_status);
     }
 
     // Check if goal has been reached
