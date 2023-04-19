@@ -5,6 +5,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <tf2/transform_datatypes.h>
+#include <tf/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -261,16 +262,28 @@ void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &
 geometry_msgs::Point calculateMidpoint(geometry_msgs::Pose robot_pose, geometry_msgs::Pose face_pose)
 {
     double dist = sqrt(pow(robot_pose.position.x - face_pose.position.x, 2) + pow(robot_pose.position.y - face_pose.position.y, 2));
+    int curr_x = points[i][0];
+    int curr_y = points[i][1];
+    geometry_msgs::Point map_pt;
+    geometry_msgs::Point transformed_pt1;
 
+    map_pt.x = (float)curr_x * map_resolution;
+    map_pt.y = (float)(cv_map.rows - curr_y) * map_resolution; // cv_map.rows - y --> because y is flipped
+    map_pt.z = 0.0;
+
+    // transform C.S. because origin is not at 0,0
+    ROS_INFO("Start position x: %f and Start position y: %f ", transformed_pt1.x, transformed_pt1.y);
+
+    tf2::doTransform(map_pt, transformed_pt1, map_transform);
     geometry_msgs::Point midpoint;
-    midpoint.x = (robot_pose.position.x + face_pose.position.x) / 2;
-    midpoint.y = (robot_pose.position.y + face_pose.position.y) / 2;
-    midpoint.z = (robot_pose.position.z + face_pose.position.z) / 2;
+    midpoint.x = (face_pose.position.x + robot_pose.position.x) / 2;
+    midpoint.y = (face_pose.position.y + robot_pose.position.y) / 2;
+    midpoint.z = 0;
 
-    double factor = 0.5;
-    midpoint.x += factor * (face_pose.position.x - robot_pose.position.x) / dist;
-    midpoint.y += factor * (face_pose.position.y - robot_pose.position.y) / dist;
-    midpoint.z += factor * (face_pose.position.z - robot_pose.position.z) / dist;
+    // double factor = 0.5;
+    // midpoint.x += factor * (face_pose.position.x - robot_pose.position.x) / dist;
+    // midpoint.y += factor * (face_pose.position.y - robot_pose.position.y) / dist;
+    // midpoint.z += factor * (face_pose.position.z - robot_pose.position.z) / dist;
 
     return midpoint;
 }
@@ -279,6 +292,7 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
 {
     visualization_msgs::Marker latestMarker = msg->markers.back();
     geometry_msgs::Pose latestMarkerPose = latestMarker.pose;
+    geometry_msgs::Pose latestMarkerPose_map;
     ROS_INFO("JUHU MARKER JE TU");
     stevilo_obrazov++;
 
@@ -287,10 +301,10 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     ROS_INFO("Canceling goal number %d", i);
     i--;
     cancel_pub.publish(goal_id);
-    // ROS_INFO("Latest marker point: x=%f, y=%f, z=%f", latestMarkerPose.position.x, latestMarkerPose.position.y, latestMarkerPose.position.z);
-    // geometry_msgs::Pose pose = create_pose(x, y, z);
-    // geometry_msgs::Point Midpoint = calculateMidpoint(pose, latestMarkerPose);
-    // ROS_INFO("Created midpoint message: x=%f, y=%f, z=%f", Midpoint.x, Midpoint.y, Midpoint.z);
+    ROS_INFO("Latest marker point: x=%f, y=%f, z=%f", latestMarkerPose.position.x, latestMarkerPose.position.y, latestMarkerPose.position.z);
+    geometry_msgs::Pose pose = create_pose(x, y, z);
+    geometry_msgs::Point Midpoint = calculateMidpoint(pose, latestMarkerPose);
+    ROS_INFO("Created midpoint message: x=%f, y=%f, z=%f", Midpoint.x, Midpoint.y, Midpoint.z);
 
     // calculate vector from midpoint to face position
     // geometry_msgs::Vector3 vec;
@@ -325,21 +339,28 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
 
     // Set the goal position
     move_base_msgs::MoveBaseGoal goal;
+    
     goal.target_pose.header.frame_id = "map";
     goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.pose.position.x = latestMarkerPose.position.x;
-    goal.target_pose.pose.position.y = latestMarkerPose.position.y;
+    goal.target_pose.pose.position.x = (latestMarkerPose.position.x);
+    goal.target_pose.pose.position.y = (latestMarkerPose.position.y);
+    ROS_INFO("Marker position x: %f and marker position y: %f ", goal.target_pose.pose.position.x , goal.target_pose.pose.position.y);
+    
     goal.target_pose.pose.orientation.w = 1.0;
-
+    
     // Set a desired distance from the goal
-    double desired_distance = 0.4; // meters
+    double desired_distance = 0.3; // meters
     double distance_to_goal = sqrt(pow(goal.target_pose.pose.position.x, 2) + pow(goal.target_pose.pose.position.y, 2));
     double scaling_factor = (distance_to_goal - desired_distance) / distance_to_goal;
-    goal.target_pose.pose.position.x *= scaling_factor;
-    goal.target_pose.pose.position.y *= scaling_factor;
+
+    goal.target_pose.pose.position.x = Midpoint.x;
+    goal.target_pose.pose.position.y = Midpoint.y;
+    ROS_INFO("Midpoint position x: %f and Midpoint position y: %f ", goal.target_pose.pose.position.x , goal.target_pose.pose.position.y);
+
     // Send the goal to the navigation stack
     ac.sendGoal(goal);
     approaching_face = true;
+    ROS_INFO("goal position x: %f and goal position y: %f ", goal.target_pose.pose.position.x , goal.target_pose.pose.position.y);
     ROS_INFO("Approaching the face number: %d", stevilo_obrazov);
     // Wait for the robot to reach the goal
     ac.waitForResult();
@@ -446,7 +467,7 @@ int main(int argc, char **argv)
     sound_client = n.serviceClient<exercise2::PlaySound>("play_sound");
     namedWindow("Map");
     cmd_vel_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 100);
-    //ros::Subscriber sub_to_pose = n.subscribe("/amcl_pose", 10, &amclPoseCallback);
+    ros::Subscriber sub_to_pose = n.subscribe("/amcl_pose", 10, &amclPoseCallback);
 
     // rotate(1);
     actionlib_msgs::GoalID goal_id;
