@@ -3,6 +3,7 @@ project(exercise3)
 
 find_package(catkin REQUIRED COMPONENTS
 	roscpp
+	rospy
 	exercise2
 	cv_bridge
 	sensor_msgs
@@ -15,7 +16,9 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(OpenCV)
 
-catkin_package()
+catkin_package(CATKIN_DEPENDS rospy roscpp)
+
+catkin_install_python(PROGRAMS scripts/goals.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 add_executable(map_goals src/map_goals.cpp)
