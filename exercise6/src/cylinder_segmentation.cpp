@@ -21,29 +21,119 @@
 #include "geometry_msgs/Pose.h"
 #include <visualization_msgs/MarkerArray.h>
 #include <pcl/filters/voxel_grid.h>
+#include <limits>
 
 ros::Publisher pubx;
 ros::Publisher puby;
 ros::Publisher pubm;
-ros::Publisher pub_cylinder_marker_array; 
+ros::Publisher pub_cylinder_marker_array;
 
 tf2_ros::Buffer tf2_buffer;
 
 typedef pcl::PointXYZ PointT;
 
+
+// new variables
 visualization_msgs::MarkerArray cylinder_marker_array; // for pub_cylinder_marker_array
+std::vector<int> potential_positions_clusters;
+std::vector<geometry_msgs::Pose> potential_positions;
+int marker_id = 0;
 
-
-void downsample_pointcloud(const pcl::PCLPointCloud2ConstPtr &cloud_blob,
-                           const pcl::PointCloud<PointT>::Ptr &cloud)
+void downsample_pcl_voxel(const pcl::PCLPointCloud2ConstPtr &cloud_blob,
+                          const pcl::PointCloud<PointT>::Ptr &cloud)
 {
   pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
   pcl::PCLPointCloud2::Ptr cloud_filtered_blob(new pcl::PCLPointCloud2);
   sor.setInputCloud(cloud_blob);
   sor.setLeafSize(0.01f, 0.01f, 0.01f);
-  // sor.setLeafSize (0.005f, 0.005f, 0.005f);
+  //sor.setLeafSize(0.005f, 0.005f, 0.005f);
   sor.filter(*cloud_filtered_blob);
   pcl::fromPCLPointCloud2(*cloud_filtered_blob, *cloud);
+}
+
+void publish_new_marker(geometry_msgs::Pose pose)
+{
+  visualization_msgs::Marker marker;
+  marker.header.frame_id = "map";
+  marker.header.stamp = ros::Time::now();
+
+  marker.ns = "cylinder";
+  marker.id = marker_id;
+
+  marker.type = visualization_msgs::Marker::CYLINDER;
+  marker.action = visualization_msgs::Marker::ADD;
+
+  marker.pose = pose;
+
+  marker.scale.x = 0.1;
+  marker.scale.y = 0.1;
+  marker.scale.z = 0.1;
+
+  marker.color.r = 0.0f;
+  marker.color.g = 1.0f;
+  marker.color.b = 0.0f;
+  marker.color.a = 1.0f;
+
+  marker.lifetime = ros::Duration();
+  marker_id++;
+  // pubm.publish(marker);
+  cylinder_marker_array.markers.push_back(marker);
+  pub_cylinder_marker_array.publish(cylinder_marker_array);
+  std::cerr << "Published a new marker. " << std::endl;
+}
+
+double euclidean_distance(geometry_msgs::Pose pose1, geometry_msgs::Pose pose2)
+{
+  double dx = pose1.position.x - pose2.position.x;
+  double dy = pose1.position.y - pose2.position.y;
+
+  return std::sqrt(dx * dx + dy * dy);
+}
+
+void check_potential_cylinder(geometry_msgs::Pose pose)
+{
+  double min_distance = std::numeric_limits<double>::infinity();
+  int min_distance_index = 0;
+  if (potential_positions.size() == 0)
+  {
+    potential_positions.push_back(pose);
+    potential_positions_clusters.push_back(1);
+    std::cerr << "First position added" << std::endl;
+    return;
+  }
+
+  for (int i = 0; i < potential_positions.size(); i++) // check for the closest group
+  {
+    double eucl_dist = euclidean_distance(potential_positions[i], pose);
+    if (eucl_dist < min_distance)
+    {
+      min_distance = eucl_dist;
+      min_distance_index = i;
+    }
+  }
+  std::cerr << "Closest point is: " << min_distance_index << " Eucl dist: " << min_distance << std::endl;
+
+  // if the group is in certain threshold distance to another, add it to its "cluster" and calculate new average coordinates every time a point is computed -> if two cylinders are very close it detects only one?
+  if (min_distance < 1.0) // m
+  {
+    potential_positions_clusters[min_distance_index] += 1;
+    potential_positions[min_distance_index].position.x = (potential_positions[min_distance_index].position.x + pose.position.x) / 2;
+    potential_positions[min_distance_index].position.y = (potential_positions[min_distance_index].position.y + pose.position.y) / 2;
+    potential_positions[min_distance_index].position.z = (potential_positions[min_distance_index].position.z + pose.position.z) / 2;
+    std::cerr << "New position for group: " << min_distance_index << " [ " << potential_positions[min_distance_index].position.x << ", " << potential_positions[min_distance_index].position.y << ", " << potential_positions[min_distance_index].position.z << " ]" << std::endl;
+  }
+  else // if the positions are not close enough create new group
+  {
+    potential_positions.push_back(pose);
+    potential_positions_clusters.push_back(1);
+    int new_ix = potential_positions.size() - 1;
+    std::cerr << "New added group: " << new_ix << " [ " << potential_positions[new_ix].position.x << ", " << potential_positions[new_ix].position.y << ", " << potential_positions[new_ix].position.z << " ]" << std::endl;
+  }
+
+  if (potential_positions_clusters[min_distance_index] == 5)
+  {
+    publish_new_marker(potential_positions[min_distance_index]);
+  }
 }
 
 void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
@@ -74,7 +164,7 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
   pcl::PointCloud<PointT>::Ptr cloud_filtered_over_z(new pcl::PointCloud<PointT>);
 
   // Read in the cloud data
-  downsample_pointcloud(cloud_blob, cloud);
+  downsample_pcl_voxel(cloud_blob, cloud);
 
   // pcl::fromPCLPointCloud2(*cloud_blob, *cloud);
   std::cerr << "PointCloud has: " << cloud->points.size() << " data points." << std::endl;
@@ -126,9 +216,9 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
   extract.filter(*cloud_plane);
   std::cerr << "PointCloud representing the planar component: " << cloud_plane->points.size() << " data points." << std::endl;
 
-  //pcl::PCLPointCloud2 outcloud_plane;
-  //pcl::toPCLPointCloud2(*cloud_plane, outcloud_plane);
-  //pubx.publish(outcloud_plane);
+  // pcl::PCLPointCloud2 outcloud_plane;
+  // pcl::toPCLPointCloud2(*cloud_plane, outcloud_plane);
+  // pubx.publish(outcloud_plane);
 
   // Remove the planar inliers, extract the rest
   extract.setNegative(true);
@@ -138,8 +228,7 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
   extract_normals.setIndices(inliers_plane);
   extract_normals.filter(*cloud_normals2);
 
-
-  if (cloud_filtered2->points.size() <= 10) 
+  if (cloud_filtered2->points.size() <= 10)
   {
     return;
   }
@@ -151,7 +240,7 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
   seg.setNormalDistanceWeight(0.1);
   seg.setMaxIterations(10000);
   seg.setDistanceThreshold(0.05);
-  seg.setRadiusLimits(0.1, 0.18);
+  seg.setRadiusLimits(0.1, 0.17);
   seg.setInputCloud(cloud_filtered2);
   seg.setInputNormals(cloud_normals2);
 
@@ -159,12 +248,18 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
   seg.segment(*inliers_cylinder, *coefficients_cylinder);
   std::cerr << "Cylinder coefficients: " << *coefficients_cylinder << std::endl;
 
-  // chech if cylinder radius is in the expected range
-  if(coefficients_cylinder->values[6] < 0.1 || coefficients_cylinder->values[6] > 0.15) {
-
-      return;
+  if (coefficients_cylinder->values.size() == 0)
+  {
+    std::cerr << "Cylinder not found!" << std::endl;
+    return;
   }
-  
+  // chech if cylinder radius is in the expected range
+  if (coefficients_cylinder->values[6] < 0.1 || coefficients_cylinder->values[6] > 0.15)
+  {
+
+    return;
+  }
+
   std::cerr << "Inliers_num_cylinder: " << inliers_cylinder->indices.size() << std::endl;
 
   // Write the cylinder inliers to disk
@@ -173,6 +268,7 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
   extract.setNegative(false);
   pcl::PointCloud<PointT>::Ptr cloud_cylinder(new pcl::PointCloud<PointT>());
   extract.filter(*cloud_cylinder);
+
   if (cloud_cylinder->points.empty())
     std::cerr << "Can't find the cylindrical component." << std::endl;
   else
@@ -220,38 +316,23 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
 
     std::cerr << "point_map: " << point_map.point.x << " " << point_map.point.y << " " << point_map.point.z << std::endl;
 
-    marker.header.frame_id = "map";
-    marker.header.stamp = ros::Time::now();
+    geometry_msgs::Pose potential_pose;
 
-    marker.ns = "cylinder";
-    marker.id = 0;
+    potential_pose.position.x = point_map.point.x;
+    potential_pose.position.y = point_map.point.y;
+    potential_pose.position.z = point_map.point.z;
+    potential_pose.orientation.x = 0.0;
+    potential_pose.orientation.y = 0.0;
+    potential_pose.orientation.z = 0.0;
+    potential_pose.orientation.w = 1.0;
+    if (std::isnan(point_map.point.x) || std::isnan(point_map.point.y) || std::isnan(point_map.point.z)) 
+    {
+      std::cerr << "The point_map values are NaN!" << std::endl;
+      return;
+    }
 
-    marker.type = visualization_msgs::Marker::CYLINDER;
-    marker.action = visualization_msgs::Marker::ADD;
-
-    marker.pose.position.x = point_map.point.x;
-    marker.pose.position.y = point_map.point.y;
-    marker.pose.position.z = point_map.point.z;
-    marker.pose.orientation.x = 0.0;
-    marker.pose.orientation.y = 0.0;
-    marker.pose.orientation.z = 0.0;
-    marker.pose.orientation.w = 1.0;
-
-    marker.scale.x = 0.1;
-    marker.scale.y = 0.1;
-    marker.scale.z = 0.1;
-
-    marker.color.r = 0.0f;
-    marker.color.g = 1.0f;
-    marker.color.b = 0.0f;
-    marker.color.a = 1.0f;
-
-    marker.lifetime = ros::Duration();
-
-    //pubm.publish(marker);
-    cylinder_marker_array.markers.push_back(marker);
-    pub_cylinder_marker_array.publish(cylinder_marker_array);
-    std::cerr << "Published a new marker. " << std::endl;
+    //publish_new_marker(potential_pose);
+    check_potential_cylinder(potential_pose);
 
     pcl::PCLPointCloud2 outcloud_cylinder;
     pcl::toPCLPointCloud2(*cloud_cylinder, outcloud_cylinder);
@@ -276,7 +357,7 @@ int main(int argc, char **argv)
   puby = nh.advertise<pcl::PCLPointCloud2>("cylinder", 1);
 
   pubm = nh.advertise<visualization_msgs::Marker>("detected_cylinder", 1);
-  pub_cylinder_marker_array = nh.advertise < visualization_msgs::MarkerArray > ("detected_cylinders", 0);
+  pub_cylinder_marker_array = nh.advertise<visualization_msgs::MarkerArray>("detected_cylinders", 1000);
   // Spin
   ros::spin();
 }

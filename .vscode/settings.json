@@ -5,6 +5,14 @@
         "ostream": "cpp",
         "condition_variable": "cpp",
         "cmath": "cpp",
-        "chrono": "cpp"
+        "chrono": "cpp",
+        "iostream": "cpp",
+        "array": "cpp",
+        "bitset": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "utility": "cpp",
+        "limits": "cpp",
+        "unordered_set": "cpp"
     }
 }
