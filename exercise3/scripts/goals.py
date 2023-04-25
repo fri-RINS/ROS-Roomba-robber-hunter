@@ -20,15 +20,23 @@ from geometry_msgs.msg import PointStamped, Vector3, Pose
 from cv_bridge import CvBridge, CvBridgeError
 from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import ColorRGBA
+import numpy as np
+from math import atan2
+
 
 
 goals = [
     {'x': 0.1, 'y': -1.65},
+    #{'x': 0.12, 'y': -1.6},
+    #{'x': 0.1, 'y': -1.5},
     {'x': 1.0, 'y': -1.7},
     {'x': 3.1, 'y': -1.05},
     {'x': 2.35, 'y': 1.85},
     # add more goals as needed
 ]
+
+
+
 
 n_goals = len(goals)
 cv_map = None
@@ -41,6 +49,7 @@ odom_sub = None
 num_faces = 1
 face_to_approach = None
 current_robot_pose = None
+
 
 def current_robot_pose_callback(data):
     global current_robot_pose
@@ -188,7 +197,12 @@ def approach_and_greet(target_point):
     goal.target_pose.header.stamp = rospy.Time.now()
     goal.target_pose.pose.position.x = greet_point.x
     goal.target_pose.pose.position.y = greet_point.y
-    goal.target_pose.pose.orientation.w = 1.0
+    # goal.target_pose.pose.orientation.w = 1.0
+
+    # Calculate the orientation of the goal
+    theta = atan2(greet_point.y, greet_point.x)
+    goal.target_pose.pose.orientation.z = math.sin(theta/2.0)
+    goal.target_pose.pose.orientation.w = math.cos(theta/2.0)
 
     # Send the goal to the move_base action server
     client.send_goal(goal)
