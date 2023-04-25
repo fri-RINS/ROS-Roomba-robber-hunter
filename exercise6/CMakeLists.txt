@@ -26,6 +26,13 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_geometry_msgs
 )
 
+## Serivces
+add_service_files(
+	DIRECTORY srv
+	FILES
+	ColorSrv.srv
+	)
+
 ## Add include directories
 include_directories(
 	${Boost_INCLUDE_DIRS}
@@ -75,4 +82,6 @@ add_executable (cylinder_segmentation src/cylinder_segmentation.cpp)
 add_executable (minicut_segmentation src/minicut_segmentation.cpp)
 add_executable (region_growing src/region_growing.cpp)
 add_executable (centroid_estimation src/centroid_estimation.cpp)
+
+
 

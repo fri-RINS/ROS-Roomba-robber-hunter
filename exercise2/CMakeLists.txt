@@ -7,7 +7,7 @@ project(exercise2)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS rospy roscpp geometry_msgs message_generation)
+find_package(catkin REQUIRED COMPONENTS rospy roscpp geometry_msgs message_generation sensor_msgs)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -48,7 +48,7 @@ add_message_files(DIRECTORY msg
 ## Generate services in the 'srv' folder
 add_service_files(
   DIRECTORY srv
-  FILES Walk.srv PlaySound.srv
+  FILES Walk.srv PlaySound.srv ColorSrv.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -61,6 +61,7 @@ add_service_files(
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
+  sensor_msgs
   std_msgs  # Or other packages containing msgs
 )
 
@@ -95,8 +96,8 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES exercise1
-   CATKIN_DEPENDS message_runtime rospy roscpp
+#  LIBRARIES
+   CATKIN_DEPENDS message_runtime rospy roscpp sensor_msgs
 #  DEPENDS system_lib
 )
 

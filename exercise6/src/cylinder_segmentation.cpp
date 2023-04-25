@@ -130,7 +130,7 @@ void check_potential_cylinder(geometry_msgs::Pose pose)
     std::cerr << "New added group: " << new_ix << " [ " << potential_positions[new_ix].position.x << ", " << potential_positions[new_ix].position.y << ", " << potential_positions[new_ix].position.z << " ]" << std::endl;
   }
 
-  if (potential_positions_clusters[min_distance_index] == 5)
+  if (potential_positions_clusters[min_distance_index] == 50)
   {
     publish_new_marker(potential_positions[min_distance_index]);
   }

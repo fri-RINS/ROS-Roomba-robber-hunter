@@ -21,7 +21,7 @@ from matplotlib import pyplot as plt
 from tf import transformations as t
 from cv_bridge import CvBridge, CvBridgeError
 
-from course_project.srv import ColorSrv
+from exercise2.srv import ColorSrv
 
 import argparse
 

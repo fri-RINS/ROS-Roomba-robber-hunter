@@ -18,12 +18,12 @@ import message_filters
 
 # for messaging and verification with brain
 #from cost_map_manager import CostmapManager
-from course_project.msg import MyStatus
+# from course_project.msg import MyStatus
 
 # imports for messages
-from course_project.msg import RingGreetInstructions
+# from course_project.msg import RingGreetInstructions
 
-from course_project.srv import ColorSrv
+# from course_project.srv import ColorSrv
 
 from color_service import ColorDetector
 
@@ -79,7 +79,7 @@ class The_Ring:
         self.object_images = []
 
         self.current_publish_id = 0
-        self.coords_publisher = rospy.Publisher('unique_ring_greet', RingGreetInstructions, queue_size=20)
+        # self.coords_publisher = rospy.Publisher('unique_ring_greet', RingGreetInstructions, queue_size=20)
 
         # for publishing face markers on map
         self.marker_array = MarkerArray()
@@ -91,7 +91,7 @@ class The_Ring:
 
         # not to send messages to brain before ready
         self.BRAIN_READY = False
-        self.brain_status_sub = rospy.Subscriber("brain/status", MyStatus, self.brain_status_callback)
+        # self.brain_status_sub = rospy.Subscriber("brain/status", MyStatus, self.brain_status_callback)
 
         # number of published objects
         self.number_of_published_objects = 0
@@ -228,7 +228,7 @@ class The_Ring:
         marker_color = self.get_marker_color_from_text(object_color)
         self.publish_pose(object_pose, marker_color)
 
-        self.publish_greet_instructions(object_pose, robot_detection_pose, object_color)
+        # self.publish_greet_instructions(object_pose, robot_detection_pose, object_color)
 
         # increase the number of objects
         self.number_of_published_objects = self.number_of_published_objects + 1
@@ -244,8 +244,9 @@ class The_Ring:
     Publishes coordinates which the robot has to reach in order greet the 
     uniquely object to correct toppic for brain.py to read.
     """
+    """ 
     def publish_greet_instructions(self, pose_object, pose_robot, object_color):
-        msg = RingGreetInstructions()
+       # msg = RingGreetInstructions()
         msg.object_pose = pose_object
 
         if pose_robot == None:
@@ -262,6 +263,7 @@ class The_Ring:
 
         rospy.loginfo("New unique object coords published on topic with id: %d." % self.current_publish_id)
         rospy.loginfo(msg)
+        """
 
     ###########
 

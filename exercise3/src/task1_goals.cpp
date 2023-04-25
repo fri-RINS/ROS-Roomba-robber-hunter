@@ -14,7 +14,7 @@
 #include <visualization_msgs/Marker.h>
 #include <actionlib_msgs/GoalID.h>
 #include <std_msgs/Empty.h>
-#include "exercise2/PlaySound.h"
+// #include "exercise2/PlaySound.h"
 #include <tf/transform_datatypes.h>
 #include <geometry_msgs/Twist.h>
 #include <cmath>
@@ -381,10 +381,10 @@ void approach_and_greet(const visualization_msgs::MarkerArray::ConstPtr &msg)
     ac.cancelGoal();
     ros::Duration(1.0).sleep();
 
-    exercise2::PlaySound srv;
-    srv.request.message = "Hello there";
+    // exercise2::PlaySound srv;
+    // srv.request.message = "Hello there";
     ROS_INFO("Saying hello");
-    sound_client.call(srv);
+    // sound_client.call(srv);
 
     ros::Duration(1.0).sleep();
     if (stevilo_obrazov == 3)
@@ -464,7 +464,7 @@ int main(int argc, char **argv)
     ros::Subscriber sub = n.subscribe("/move_base/status", 100, &messageCallback);
     cancel_pub = n.advertise<actionlib_msgs::GoalID>("/move_base/cancel", 1);
     face_marker_sub = n.subscribe("face_markers", 10, &approach_and_greet);
-    sound_client = n.serviceClient<exercise2::PlaySound>("play_sound");
+    // sound_client = n.serviceClient<exercise2::PlaySound>("play_sound");
     namedWindow("Map");
     cmd_vel_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 100);
     ros::Subscriber sub_to_pose = n.subscribe("/amcl_pose", 10, &amclPoseCallback);
