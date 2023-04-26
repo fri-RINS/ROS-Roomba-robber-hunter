@@ -48,6 +48,13 @@
     <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
   </include>
 
+<!-- Sound Player service -->
+  <node pkg="sound_play" type="soundplay_node.py" name="soundplay_node"  output="screen">
+  </node>
+  
+  <node pkg="exercise4" type="play_sound.py" name="play_sound"  output="screen">
+  </node>
+  
   <!-- Move base -->
   <include file="$(find turtlebot_custom_navigation)/launch/includes/move_base.launch.xml"/>
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_rviz_launchers)/rviz/navigation.rviz"/>
