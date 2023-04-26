@@ -24,6 +24,7 @@ from std_msgs.msg import String
 import numpy as np
 from math import atan2
 from functools import partial
+from sound_play.libsoundplay import SoundClient
 
 
 goals = [
@@ -55,6 +56,7 @@ parking_to_approach = None
 current_robot_pose = None
 parking_found = False
 
+rings_found = []
 
 class MyGoal:
     def __init__(self, goal: MoveBaseGoal, type: str):
@@ -143,7 +145,7 @@ class GoalQueue:
         publish_marker(greet_point)
         target_point = target_pose.position
 
-        rospy.loginfo(f"Point to apprach ring: {greet_point}")
+        rospy.loginfo(f"Green ring is added to queue: {greet_point}")
 
         goal = MoveBaseGoal()
         goal.target_pose.header.frame_id = 'map'
@@ -230,6 +232,28 @@ def calculate_greet_point(target_pose, safe_distance):
                       current_point.z + new_distance * unit_vector.z)
     return new_point
 
+def get_color_from_rgba(rgba):
+        """
+        Returns the vector with marker color according to string
+
+        colors = ["yellow", "green", "black", "blue", "red"]
+        """
+        # for an unknown color we will use white
+        res = "white"
+
+
+        if rgba == ColorRGBA(1, 0, 0, 1):
+            res = "red"
+        if rgba == ColorRGBA(0, 1, 0, 1):
+            res = "green"
+        if rgba == ColorRGBA(0, 0, 1, 1):
+            res = "blue"
+        if rgba == ColorRGBA(0, 0, 0, 1):
+            res = "black"
+        if rgba == ColorRGBA(255, 165, 0, 1):
+            res = "yellow"
+
+        return res
 
 def rotate(angle, speed):
 
@@ -305,6 +329,24 @@ def map_callback(msg_map):
             elif map_msg_data[idx_map_y + x] == 100:
                 cv_map_data[idx] = 0
 
+def say_ring_color(color):
+    
+    soundhandle = SoundClient()
+    rospy.sleep(1) # wait for the sound client to initialize
+    # say the phrase "green ring detected"
+    phrase = f"{color} ring detected"
+    rospy.loginfo(f"Saying {color} ring detected")
+    soundhandle.say(phrase)
+    rospy.sleep(2) # wait for the sound to finish playing
+
+def say_cylinder_color(color):
+    soundhandle = SoundClient()
+    rospy.sleep(1) # wait for the sound client to initialize
+    # say the phrase "green ring detected"
+    phrase = f"{color} cylinder detected"
+    rospy.loginfo(f"Saying {color} cylinder detected")
+    soundhandle.say(phrase)
+    rospy.sleep(2) # wait for the sound to finish playing 
 
 def greet():
     srv = PlaySoundRequest()
@@ -317,7 +359,6 @@ def greet():
 
 def approach_and_greet(goal):
     global face_to_approach
-    global num_faces
 
     # Send the goal to the move_base action server
     client.send_goal(goal)
@@ -330,8 +371,6 @@ def approach_and_greet(goal):
 
     # Remove aprroached face from face_to_approach
     face_to_approach = None
-
-    num_faces += 1
 
 
 def execute_ring(my_goal):
@@ -349,18 +388,18 @@ def execute_ring(my_goal):
         arm_pub.publish(msg)
 
 
-def face_marker_callback(data):
+def face_marker_callback(data_face):
     global face_to_approach
     # rospy.loginfo(rospy.get_caller_id() + "I heard %s", data)
 
-    latest_marker = data.markers[-1]
+    latest_marker = data_face.markers[-1]
     latest_marker_pose = latest_marker.pose
 
     face_x = latest_marker_pose.position.x
     face_y = latest_marker_pose.position.y
     face_z = latest_marker_pose.position.z
 
-    rospy.loginfo(f"Face to apprach: x: {face_x}, y: {face_y}, z: {face_z}")
+    rospy.loginfo(f"Face to approach: x: {face_x}, y: {face_y}, z: {face_z}")
     face_to_approach = latest_marker_pose
 
 
@@ -371,11 +410,17 @@ def ring_marker_callback(data):
     latest_ring_pose = latest_ring.pose
     latest_ring_color = latest_ring.color
 
-    if latest_ring_color == ColorRGBA(0, 1, 0, 1):
+    ring_color = get_color_from_rgba(latest_ring_color)
+
+    if ring_color not in rings_found:
+        say_ring_color(ring_color)
+        rings_found.append(ring_color)
+
+    if ring_color == "green":
         ring_to_approach = latest_ring_pose
+        rospy.loginfo("Ring is green, so will approach")
     else:
         rospy.loginfo("Ring is not green, so will not approach")
-
 
 def parking_marker_callback(data):
     global parking_to_approach
@@ -388,7 +433,7 @@ def parking_marker_callback(data):
     rospy.loginfo("Parking spot has been detected:")
 
 
-def explore_goals(client):
+"""def explore_goals(client):
 
     i = 0
     while True:
@@ -423,7 +468,7 @@ def explore_goals(client):
                 rospy.loginfo("Couldn't move robot")
 
         i += 1
-
+"""
 
 def do_map_goal(my_goal, goal_queue):
 
@@ -449,7 +494,7 @@ def do_map_goal(my_goal, goal_queue):
 
 def do_face_goal(my_goal, goal_queue):
     approach_and_greet(my_goal.goal)
-    qoal_queue.complete_face_goal(my_goal)
+    goal_queue.complete_face_goal(my_goal)
     return
 
 
@@ -496,23 +541,24 @@ if __name__ == '__main__':
     ]
 
     goal_points2 = [
+        {'x': 0, 'y': 0},
         {'x': 0.1, 'y': -1.65},
         # {'x': 0.12, 'y': -1.6},
         # {'x': 0.1, 'y': -1.5},
         {'x': 1.0, 'y': -1.7},
         {'x': 3.1, 'y': -1.05},
         {'x': 2.35, 'y': 1.85},
-        {'x': 0, 'y': 0},
+        
         # add more goals as needed
     ]
     # add more goals as needed
-    qoal_queue = GoalQueue(goal_points2, num_faces=3)
+    goal_queue = GoalQueue(goal_points2, num_faces=3)
 
     cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
     odom_sub = rospy.Subscriber(
         '/amcl_pose', PoseWithCovarianceStamped, current_robot_pose_callback)
-    markers_pub = rospy.Publisher('face_markers', MarkerArray, queue_size=1000)
+    markers_pub = rospy.Publisher('greet_point_markers', MarkerArray, queue_size=1000)
     arm_pub = rospy.Publisher('/arm_command', String, queue_size=10)
 
     face_marker_sub = rospy.Subscriber(
@@ -523,11 +569,11 @@ if __name__ == '__main__':
         "parking_marker", MarkerArray, parking_marker_callback, queue_size=10)
     sound_client = rospy.ServiceProxy('play_sound', PlaySound)
 
-    qoal_queue.print_goals()
+    goal_queue.print_goals()
 
     rate = rospy.Rate(1)
     # explore_goals(client)
-    explore_goals1(client, qoal_queue)
+    explore_goals1(client, goal_queue)
 
     # except rospy.ROSInterruptException:
     #    rospy.loginfo("Navigation test finished.")
