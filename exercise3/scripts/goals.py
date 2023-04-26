@@ -20,17 +20,16 @@ from geometry_msgs.msg import PointStamped, Vector3, Pose
 from cv_bridge import CvBridge, CvBridgeError
 from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import ColorRGBA
+from std_msgs.msg import String
 import numpy as np
 from math import atan2
 from functools import partial
 
 
-
-
 goals = [
     {'x': 0.1, 'y': -1.65},
-    #{'x': 0.12, 'y': -1.6},
-    #{'x': 0.1, 'y': -1.5},
+    # {'x': 0.12, 'y': -1.6},
+    # {'x': 0.1, 'y': -1.5},
     {'x': 1.0, 'y': -1.7},
     {'x': 3.1, 'y': -1.05},
     {'x': 2.35, 'y': 1.85},
@@ -38,7 +37,6 @@ goals = [
 ]
 
 goalArray = []
-
 
 
 n_goals = len(goals)
@@ -53,13 +51,16 @@ odom_sub = None
 num_faces = 1
 face_to_approach = None
 ring_to_approach = None
+parking_to_approach = None
 current_robot_pose = None
+parking_found = False
+
 
 class MyGoal:
     def __init__(self, goal: MoveBaseGoal, type: str):
         self.goal = goal
         self.type = type
-        #self.is_completed = False
+        # self.is_completed = False
 
     # def makeCompleted(self):
     #     self.is_completed = True
@@ -78,11 +79,11 @@ class GoalQueue:
         self.completed_ring_goals = []
         self.num_faces = num_faces
         self.greeted_faces = 0
-        self.can_approach_ring = False # True only for testing
-        self.running = True # When All works is done set to False -> stop the robot
+        self.can_approach_ring = False  # True only for testing
+        self.running = True  # When All works is done set to False -> stop the robot
         self.init_map_goals(goal_points)
 
-    def init_map_goals(self, init_goal_points):    
+    def init_map_goals(self, init_goal_points):
 
         for goal_point in init_goal_points:
             goal = MoveBaseGoal()
@@ -111,7 +112,6 @@ class GoalQueue:
         else:
             return self.map_goals[0]
 
-    
     def add_face_goal(self, target_pose):
         # Calculate greet point
         greet_point = calculate_greet_point(target_pose, 0.3)
@@ -135,7 +135,7 @@ class GoalQueue:
 
         my_face_goal = MyGoal(goal, "face")
         self.face_goals.append(my_face_goal)
-        return 
+        return
 
     def add_ring_goal(self, target_pose):
         # Calculate greet point
@@ -159,7 +159,7 @@ class GoalQueue:
 
         my_ring_goal = MyGoal(goal, "ring")
         self.ring_goals.append(my_ring_goal)
-    
+
     def complete_map_goal(self, completed_goal):
         self.map_goals.remove(completed_goal)
         new_goal = completed_goal
@@ -167,21 +167,22 @@ class GoalQueue:
 
     def complete_face_goal(self, completed_goal):
         self.face_goals.remove(completed_goal)
-        self.completed_face_goals.append(completed_goal) 
+        self.completed_face_goals.append(completed_goal)
         if len(self.completed_face_goals) == self.num_faces:
             rospy.loginfo("All faces greeted.")
             self.can_approach_ring = True
 
     def complete_ring_goal(self, completed_goal):
         self.running = False
-        return   
+        return
 
 
 def current_robot_pose_callback(data):
     global current_robot_pose
 
     current_robot_pose = data.pose.pose
-    #print(current_robot_pose)
+    # print(current_robot_pose)
+
 
 def publish_marker(position):
 
@@ -200,6 +201,7 @@ def publish_marker(position):
     marker_array.markers.append(marker)
 
     markers_pub.publish(marker_array)
+
 
 def calculate_greet_point(target_pose, safe_distance):
     global current_point
@@ -228,8 +230,9 @@ def calculate_greet_point(target_pose, safe_distance):
                       current_point.z + new_distance * unit_vector.z)
     return new_point
 
-def rotate(angle, speed):   
-    
+
+def rotate(angle, speed):
+
     # Set the rate at which to publish the command (in Hz)
     rate = rospy.Rate(2)
 
@@ -241,8 +244,9 @@ def rotate(angle, speed):
 
     # Set the duration to rotate for one circle
     t0 = rospy.Time.now()
-    duration = rospy.Duration.from_sec(6.28/speed)  # 6.28 radians = 360 degrees
-    
+    duration = rospy.Duration.from_sec(
+        6.28/speed)  # 6.28 radians = 360 degrees
+
     rospy.loginfo("Start rotating.")
 
     # Loop until the duration has passed
@@ -258,15 +262,15 @@ def rotate(angle, speed):
     rospy.loginfo("Finished rotating.")
 
 
-
 def map_callback(msg_map):
-    #global cv_map, map_resolution, map_transform
-    
+    # global cv_map, map_resolution, map_transform
+
     size_x = msg_map.info.width
     size_y = msg_map.info.height
 
     if size_x < 3 or size_y < 3:
-        rospy.loginfo("Map size is only x: %d, y: %d. Not running map to image conversion", size_x, size_y)
+        rospy.loginfo(
+            "Map size is only x: %d, y: %d. Not running map to image conversion", size_x, size_y)
         return
 
     # resize cv image if it doesn't have the same dimensions as the map
@@ -301,20 +305,19 @@ def map_callback(msg_map):
             elif map_msg_data[idx_map_y + x] == 100:
                 cv_map_data[idx] = 0
 
+
 def greet():
     srv = PlaySoundRequest()
     srv.message = "Hello there"
     # call the service
     rospy.loginfo("Saying hello")
     response = sound_client(srv)
-    rospy.sleep(1)  
+    rospy.sleep(1)
 
 
 def approach_and_greet(goal):
     global face_to_approach
     global num_faces
-
-    
 
     # Send the goal to the move_base action server
     client.send_goal(goal)
@@ -330,19 +333,25 @@ def approach_and_greet(goal):
 
     num_faces += 1
 
+
 def execute_ring(my_goal):
     goal = my_goal.goal
 
     # Send the goal to the move_base action server
     client.send_goal(goal)
     client.wait_for_result()
-    rospy.loginfo("Ring was approached.")
+    rospy.loginfo("Ring was approached. Now starting to park...")
 
     # TODO PARKING
+    if not parking_found:
+        msg = String()
+        msg.data = "right"
+        arm_pub.publish(msg)
+
 
 def face_marker_callback(data):
     global face_to_approach
-    #rospy.loginfo(rospy.get_caller_id() + "I heard %s", data)
+    # rospy.loginfo(rospy.get_caller_id() + "I heard %s", data)
 
     latest_marker = data.markers[-1]
     latest_marker_pose = latest_marker.pose
@@ -353,6 +362,7 @@ def face_marker_callback(data):
 
     rospy.loginfo(f"Face to apprach: x: {face_x}, y: {face_y}, z: {face_z}")
     face_to_approach = latest_marker_pose
+
 
 def ring_marker_callback(data):
     global ring_to_approach
@@ -365,7 +375,19 @@ def ring_marker_callback(data):
         ring_to_approach = latest_ring_pose
     else:
         rospy.loginfo("Ring is not green, so will not approach")
-    
+
+
+def parking_marker_callback(data):
+    global parking_to_approach
+    global parking_found
+    parking_found = True
+    parking = data.markers[-1]
+    latest_parking_pose = parking.pose
+
+    parking_to_approach = latest_parking_pose
+    rospy.loginfo("Parking spot has been detected:")
+
+
 def explore_goals(client):
 
     i = 0
@@ -374,13 +396,12 @@ def explore_goals(client):
         if face_to_approach is not None:
             approach_and_greet(face_to_approach)
         else:
-            rotate(1,0.3) 
+            rotate(1, 0.3)
 
         goal = goals[i % len(goals)]
 
         goal_x = goal['x']
-        goal_y = goal['y']        
-
+        goal_y = goal['y']
 
         goal = MoveBaseGoal()
         goal.target_pose.header.frame_id = "map"
@@ -397,11 +418,12 @@ def explore_goals(client):
             rospy.signal_shutdown("Action server not available!")
         else:
             if client.get_result():
-                rospy.loginfo(f"Reached goal {i}: x: {goal_x}, y: {goal_y}")           
+                rospy.loginfo(f"Reached goal {i}: x: {goal_x}, y: {goal_y}")
             else:
                 rospy.loginfo("Couldn't move robot")
-    
+
         i += 1
+
 
 def do_map_goal(my_goal, goal_queue):
 
@@ -416,24 +438,27 @@ def do_map_goal(my_goal, goal_queue):
         rospy.signal_shutdown("Action server not available!")
     else:
         if client.get_result():
-            rospy.loginfo(f"Reached goal (TODO ID): x: {goal_x}, y: {goal_y}")  
+            rospy.loginfo(f"Reached goal (TODO ID): x: {goal_x}, y: {goal_y}")
             goal_queue.complete_map_goal(my_goal)
-            rotate(1,0.3)
+            rotate(1, 0.3)
         else:
             rospy.loginfo("Couldn't move robot")
 
     return
+
 
 def do_face_goal(my_goal, goal_queue):
     approach_and_greet(my_goal.goal)
     qoal_queue.complete_face_goal(my_goal)
     return
 
+
 def do_ring_goal(my_goal, goal_queue):
     print("DO RING GOAL")
     execute_ring(my_goal)
     goal_queue.complete_ring_goal(my_goal)
     return
+
 
 def explore_goals1(client, goal_queue):
     global face_to_approach
@@ -455,51 +480,54 @@ def explore_goals1(client, goal_queue):
             do_face_goal(next_goal, goal_queue)
         elif next_goal.type == "ring":
             do_ring_goal(next_goal, goal_queue)
-      
+
 
 if __name__ == '__main__':
-    #try:
+    # try:
     rospy.init_node('task1_goals', anonymous=True)
-    client = actionlib.SimpleActionClient('move_base',MoveBaseAction)
+    client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
     client.wait_for_server()
 
     # Init map goals
     goal_points = [
-    {'x': 0.1, 'y': -1.65},
-    {'x': 0.0, 'y': 0.0},
-    {'x': 1.0, 'y': -1.7}
+        {'x': 0.1, 'y': -1.65},
+        {'x': 0.0, 'y': 0.0},
+        {'x': 1.0, 'y': -1.7}
     ]
 
     goal_points2 = [
-    {'x': 0.1, 'y': -1.65},
-    #{'x': 0.12, 'y': -1.6},
-    #{'x': 0.1, 'y': -1.5},
-    {'x': 1.0, 'y': -1.7},
-    {'x': 3.1, 'y': -1.05},
-    {'x': 2.35, 'y': 1.85},
-    {'x': 0, 'y': 0},
-    # add more goals as needed
+        {'x': 0.1, 'y': -1.65},
+        # {'x': 0.12, 'y': -1.6},
+        # {'x': 0.1, 'y': -1.5},
+        {'x': 1.0, 'y': -1.7},
+        {'x': 3.1, 'y': -1.05},
+        {'x': 2.35, 'y': 1.85},
+        {'x': 0, 'y': 0},
+        # add more goals as needed
     ]
     # add more goals as needed
     qoal_queue = GoalQueue(goal_points2, num_faces=3)
 
-    cmd_vel_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=100)
-    odom_sub = rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, current_robot_pose_callback)
+    cmd_vel_pub = rospy.Publisher(
+        '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
+    odom_sub = rospy.Subscriber(
+        '/amcl_pose', PoseWithCovarianceStamped, current_robot_pose_callback)
     markers_pub = rospy.Publisher('face_markers', MarkerArray, queue_size=1000)
+    arm_pub = rospy.Publisher('/arm_command', String, queue_size=10)
 
-    face_marker_sub = rospy.Subscriber("face_markers", MarkerArray, face_marker_callback, queue_size=10)
-    ring_marker_sub = rospy.Subscriber("ring_markers", MarkerArray, ring_marker_callback, queue_size=10)
+    face_marker_sub = rospy.Subscriber(
+        "face_markers", MarkerArray, face_marker_callback, queue_size=10)
+    ring_marker_sub = rospy.Subscriber(
+        "ring_markers", MarkerArray, ring_marker_callback, queue_size=10)
+    parking_marker_sub = rospy.Subscriber(
+        "parking_marker", MarkerArray, parking_marker_callback, queue_size=10)
     sound_client = rospy.ServiceProxy('play_sound', PlaySound)
 
-
-    
     qoal_queue.print_goals()
 
     rate = rospy.Rate(1)
-    #explore_goals(client)
+    # explore_goals(client)
     explore_goals1(client, qoal_queue)
 
-        
-      
-    #except rospy.ROSInterruptException:
+    # except rospy.ROSInterruptException:
     #    rospy.loginfo("Navigation test finished.")
