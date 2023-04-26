@@ -46,6 +46,7 @@ map_resolution = None
 map_transform = TransformStamped()
 markers_pub = None
 cmd_vel_pub = None
+start_park_detection_pub = None
 face_marker_sub = None
 ring_marker_sub = None
 odom_sub = None
@@ -77,11 +78,13 @@ class GoalQueue:
         self.map_goals = []
         self.face_goals = []
         self.ring_goals = []
+        self.parking_goals = []
         self.completed_face_goals = []
         self.completed_ring_goals = []
         self.num_faces = num_faces
         self.greeted_faces = 0
-        self.can_approach_ring = False  # True only for testing
+        self.can_approach_ring = True  # True only for testing
+        self.can_park = True
         self.running = True  # When All works is done set to False -> stop the robot
         self.init_map_goals(goal_points)
 
@@ -107,6 +110,8 @@ class GoalQueue:
             print(goal.get_goal_coordinates())
 
     def get_next_goal(self):
+        if len(self.parking_goals) > 0 and self.can_park == True:
+            return self.parking_goals[0]
         if len(self.ring_goals) > 0 and self.can_approach_ring == True:
             return self.ring_goals[0]
         elif len(self.face_goals) > 0:
@@ -141,7 +146,7 @@ class GoalQueue:
 
     def add_ring_goal(self, target_pose):
         # Calculate greet point
-        greet_point = calculate_greet_point(target_pose, 0.2)
+        greet_point = calculate_greet_point(target_pose, 0.35)
         publish_marker(greet_point)
         target_point = target_pose.position
 
@@ -162,6 +167,23 @@ class GoalQueue:
         my_ring_goal = MyGoal(goal, "ring")
         self.ring_goals.append(my_ring_goal)
 
+    def add_parking_goal(self, target_pose):
+        
+        target_point = target_pose.position
+
+        rospy.loginfo(f"Parking point is added to queue: {target_point}")
+
+        goal = MoveBaseGoal()
+        goal.target_pose.header.frame_id = 'map'
+        goal.target_pose.header.stamp = rospy.Time.now()
+        goal.target_pose.pose.position.x = target_point.x
+        goal.target_pose.pose.position.y = target_point.y
+        goal.target_pose.pose.orientation.w = 1.0
+
+
+        my_parkig_goal = MyGoal(goal, "parking")
+        self.parking_goals.append(my_parkig_goal)
+
     def complete_map_goal(self, completed_goal):
         self.map_goals.remove(completed_goal)
         new_goal = completed_goal
@@ -175,7 +197,13 @@ class GoalQueue:
             self.can_approach_ring = True
 
     def complete_ring_goal(self, completed_goal):
+        self.ring_goals.remove(completed_goal)
+        self.completed_ring_goals.append(completed_goal)
+        return
+
+    def complete_parking_goal(self, completed_goal):
         self.running = False
+        rospy.loginfo("Shutting down!")
         return
 
 
@@ -277,7 +305,7 @@ def rotate(angle, speed):
     while rospy.Time.now() - t0 < duration:
         cmd_vel_pub.publish(cmd_vel)
         rate.sleep()
-        if face_to_approach or ring_to_approach:
+        if face_to_approach or ring_to_approach or parking_to_approach or parking_found:
             break
 
     # Stop the robot after the duration has passed
@@ -348,6 +376,15 @@ def say_cylinder_color(color):
     soundhandle.say(phrase)
     rospy.sleep(2) # wait for the sound to finish playing 
 
+def say_goodbye():
+    soundhandle = SoundClient()
+    rospy.sleep(1) # wait for the sound client to initialize
+    # say the phrase "green ring detected"
+    phrase = "Goodbye blue sky"
+    rospy.loginfo("Saying Goodbye")
+    soundhandle.say(phrase)
+    rospy.sleep(5) # wait for the sound to finish playing 
+
 def greet():
     srv = PlaySoundRequest()
     srv.message = "Hello there"
@@ -381,12 +418,28 @@ def execute_ring(my_goal):
     client.wait_for_result()
     rospy.loginfo("Ring was approached. Now starting to park...")
 
-    # TODO PARKING
     if not parking_found:
         msg = String()
         msg.data = "right"
         arm_pub.publish(msg)
 
+        msg2 = String()
+        msg2.data = "Start"
+        start_park_detection_pub.publish(msg2)
+
+        rospy.loginfo("Starting parking detection node")
+        rospy.sleep(3)
+
+    rotate(1,0.3)
+
+def execute_parking(my_goal):
+    goal = my_goal.goal
+
+    # Send the goal to the move_base action server
+    client.send_goal(goal)
+    client.wait_for_result()
+    say_goodbye()
+    rospy.loginfo("Roomba was parked in the parking spot.")
 
 def face_marker_callback(data_face):
     global face_to_approach
@@ -430,6 +483,7 @@ def parking_marker_callback(data):
     latest_parking_pose = parking.pose
 
     parking_to_approach = latest_parking_pose
+    parking_found = True
     rospy.loginfo("Parking spot has been detected:")
 
 
@@ -504,6 +558,12 @@ def do_ring_goal(my_goal, goal_queue):
     goal_queue.complete_ring_goal(my_goal)
     return
 
+def do_parking_goal(my_goal, goal_queue):
+    print("DO PARKING GOAL")
+    execute_parking(my_goal)
+    goal_queue.complete_parking_goal(my_goal)
+    return
+
 
 def explore_goals1(client, goal_queue):
     global face_to_approach
@@ -516,6 +576,8 @@ def explore_goals1(client, goal_queue):
         if ring_to_approach:
             goal_queue.add_ring_goal(ring_to_approach)
             ring_to_approach = None
+        if parking_to_approach:
+            goal_queue.add_parking_goal(parking_to_approach)
 
         next_goal = goal_queue.get_next_goal()
 
@@ -525,6 +587,8 @@ def explore_goals1(client, goal_queue):
             do_face_goal(next_goal, goal_queue)
         elif next_goal.type == "ring":
             do_ring_goal(next_goal, goal_queue)
+        elif next_goal.type == "parking":
+            do_parking_goal(next_goal, goal_queue)
 
 
 if __name__ == '__main__':
@@ -541,7 +605,7 @@ if __name__ == '__main__':
     ]
 
     goal_points2 = [
-        {'x': 0, 'y': 0},
+        {'x': 0, 'y': -0.5},
         {'x': 0.1, 'y': -1.65},
         # {'x': 0.12, 'y': -1.6},
         # {'x': 0.1, 'y': -1.5},
@@ -560,13 +624,14 @@ if __name__ == '__main__':
         '/amcl_pose', PoseWithCovarianceStamped, current_robot_pose_callback)
     markers_pub = rospy.Publisher('greet_point_markers', MarkerArray, queue_size=1000)
     arm_pub = rospy.Publisher('/arm_command', String, queue_size=10)
+    start_park_detection_pub = rospy.Publisher('/start_park_detection', String, queue_size=1)
 
     face_marker_sub = rospy.Subscriber(
         "face_markers", MarkerArray, face_marker_callback, queue_size=10)
     ring_marker_sub = rospy.Subscriber(
         "ring_markers", MarkerArray, ring_marker_callback, queue_size=10)
     parking_marker_sub = rospy.Subscriber(
-        "parking_marker", MarkerArray, parking_marker_callback, queue_size=10)
+        "parking_markers", MarkerArray, parking_marker_callback, queue_size=10)
     sound_client = rospy.ServiceProxy('play_sound', PlaySound)
 
     goal_queue.print_goals()

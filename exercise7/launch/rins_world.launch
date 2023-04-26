@@ -47,6 +47,9 @@
   <node pkg="exercise4" type="play_sound.py" name="play_sound"  output="screen">
   </node>
   
+  <!-- Move Arm service -->
+  <node pkg="exercise7" type="move_arm.py" name="move_arm"  output="screen">
+  </node>
   
   <!-- Map server -->
   <arg name="map_file" default="$(find exercise3)/maps/better_map.yaml"/>
