@@ -1,0 +1,482 @@
+#!/usr/bin/python3
+
+import sys
+import rospy
+import cv2
+import numpy as np
+import tf2_geometry_msgs
+import tf2_ros
+from sensor_msgs.msg import Image
+from geometry_msgs.msg import PointStamped, Vector3, Pose
+from cv_bridge import CvBridge, CvBridgeError
+from visualization_msgs.msg import Marker, MarkerArray
+from std_msgs.msg import ColorRGBA
+import math
+
+# for message synchronization
+import message_filters
+
+# for messaging and verification with brain
+# from cost_map_manager import CostmapManager
+# from course_project.msg import MyStatus
+
+# imports for messages
+# from course_project.msg import RingGreetInstructions
+
+# from course_project.srv import ColorSrv
+
+
+
+class The_Ring:
+    def __init__(self):
+        rospy.init_node('parking_node', anonymous=True)
+
+        # An object we use for converting images between ROS format and OpenCV format
+        self.bridge = CvBridge()
+
+        # A help variable for holding the dimensions of the image
+        self.dims = (0, 0, 0)
+
+        # Subscribe to the image and/or depth topic
+        # self.image_sub = rospy.Subscriber("/camera/rgb/image_raw", Image, self.image_callback)
+        # self.depth_sub = rospy.Subscriber("/camera/depth/image_raw", Image, self.depth_callback)
+
+        # Object we use for transforming between coordinate frames
+        self.tf_buf = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buf)
+
+        # register correct subscribers for dealing with detected images that are synchronized by time
+        image_sub = message_filters.Subscriber(
+            "/arm_camera/rgb/image_raw", Image)
+        depth_sub = message_filters.Subscriber(
+            "/arm_camera/depth/image_raw", Image)
+        ts = message_filters.TimeSynchronizer([image_sub, depth_sub], 100)
+        ts.registerCallback(self.combined_callback)
+
+        # for filtering detections and publishing unique positions
+        # self.object_num_threshold = 15
+        self.object_num_threshold = 1
+        # self.object_proximity_threshold = 0.5
+        self.object_proximity_threshold = 0.3
+        # only detect object if distance to it smaller than
+        # best for accurate positioning:
+        # self.max_detection_distance = 2.0
+        # self.max_detection_distance = 10.0
+        self.max_detection_distance = 1.9
+
+        # poses of potential objects (1 pose per group)
+        self.potential_parking_poses = []
+        # number of votes for pose at i-th position in self.potential_parking_poses
+        self.potential_object_votes = []
+        # tuples (xr, yr, rr_x, rr_y, rr_z, rr_w) where the robot was and how it was rotated when potential face at i-th position in self.potential_parking_poses was detected
+        self.robot_at_detection_coords = []
+
+        # False if object pose ton yet sent
+        self.potencial_objects_already_sent = []
+
+        # to store colors of objects at corresponding positions
+        self.object_colors = []
+
+        # images of objects at corresponding positions
+        self.object_images = []
+
+        self.current_publish_id = 0
+        # self.coords_publisher = rospy.Publisher('unique_ring_greet', RingGreetInstructions, queue_size=20)
+
+        # for publishing face markers on map
+        self.marker_array = MarkerArray()
+        self.marker_num = 1
+        self.markers_pub = rospy.Publisher(
+            'parking_marker', MarkerArray, queue_size=1000)
+
+        # for checking costmap for face greet location
+        # self.costmap_manager = CostmapManager()
+
+        self.number_of_published_objects = 0
+        self.num_all_objects = 10
+        self.found_all_objects = False
+
+        # TODO: remove after done testing !!!
+
+    # for confirmation of detections
+
+    def publish_unique_object(self, parking_pose):
+        print("Parking found, publishing marker!!")
+        self.publish_pose(parking_pose)
+
+        # self.publish_greet_instructions(parking_pose, robot_detection_pose, object_color
+
+    """
+    Publishes coordinates which the robot has to reach in order greet the 
+    uniquely object to correct toppic for brain.py to read.
+    """
+    """ 
+    def publish_greet_instructions(self, pose_object, pose_robot, object_color):
+       # msg = RingGreetInstructions()
+        msg.parking_pose = pose_object
+
+        if pose_robot == None:
+            pose_robot = Pose()
+
+        msg.robot_detection_pose = pose_robot
+
+        msg.object_color = object_color
+
+        msg.object_id = self.current_publish_id
+
+        self.current_publish_id = self.current_publish_id + 1
+        self.coords_publisher.publish(msg)
+
+        rospy.loginfo("New unique object coords published on topic with id: %d." % self.current_publish_id)
+        rospy.loginfo(msg)
+        """
+
+    ###########
+
+    def get_pose(self, e, dist, stamp):
+        # Calculate the position of the detected ellipse
+
+        k_f = 525  # kinect focal length in pixels
+
+        elipse_x = self.dims[1] / 2 - e[0][0]
+        elipse_y = self.dims[0] / 2 - e[0][1]
+
+        angle_to_target = np.arctan2(elipse_x, k_f)
+
+        # Get the angles in the base_link relative coordinate system
+        x, y = dist*np.cos(angle_to_target), dist*np.sin(angle_to_target)
+
+        # Define a stamped message for transformation - directly in "base_frame"
+        # point_s = PointStamped()
+        # point_s.point.x = x
+        # point_s.point.y = y
+        # point_s.point.z = 0.3
+        # point_s.header.frame_id = "base_link"
+        # point_s.header.stamp = rospy.Time(0)
+
+        # Define a stamped message for transformation - in the "camera rgb frame"
+        point_s = PointStamped()
+        point_s.point.x = -y
+        point_s.point.y = 0
+        point_s.point.z = x
+        point_s.header.frame_id = "camera_rgb_optical_frame"
+        # point_s.header.stamp = rospy.Time(0)
+        point_s.header.stamp = stamp
+
+        # Get the point in the "map" coordinate system
+        # point_world = self.tf_buf.transform(point_s, "map")
+
+        # Get the point in the "map" coordinate system
+        try:
+            point_world = self.tf_buf.transform(point_s, "map")
+
+            # Create a Pose object with the same position
+            pose = Pose()
+            pose.position.x = point_world.point.x
+            pose.position.y = point_world.point.y
+            pose.position.z = point_world.point.z
+
+            # so that there are no warnings
+            pose.orientation.x = 0
+            pose.orientation.y = 0
+            pose.orientation.z = 0
+            pose.orientation.w = 1
+
+        except Exception as e:
+            rospy.logerr("Error in get_pose except statement. %s" % str(e))
+            print(e)
+            pose = None
+
+        return pose
+
+    def publish_pose(self, pose):
+        # Create a marker used for visualization
+        self.marker_num += 1
+        marker = Marker()
+        marker.header.stamp = rospy.Time(0)
+        marker.header.frame_id = 'map'
+        marker.pose = pose
+        # marker.type = Marker.CUBE
+        marker.type = Marker.SPHERE
+        marker.action = Marker.ADD
+        marker.frame_locked = False
+        marker.lifetime = rospy.Duration.from_sec(500)
+        marker.id = self.marker_num
+        marker.scale = Vector3(0.1, 0.1, 0.1)
+        marker.color = ColorRGBA(0, 1, 0, 1)
+        self.marker_array.markers.append(marker)
+        self.markers_pub.publish(self.marker_array)
+
+    def get_ellypse_array(self, e1, e2, w, h):
+        """
+        Returns array with ones where ellypse is and 0 elsewhere.
+
+        e1 ... inner
+        e2 ... outer
+        """
+        cv_image = np.zeros((h, w, 3), np.uint8)
+        cv2.ellipse(cv_image, e2, (255, 255, 255), -1)
+        cv2.ellipse(cv_image, e1, (0, 0, 0), -1)
+
+        return cv_image[:, :, 1]
+
+    """
+    A callback that is called on synchronized messages by time from rgb image, depth image and robot base position
+
+    It detects rings and handles detections.
+    """
+
+    def combined_callback(self, rgb_image_message, depth_image_message):
+        # rospy.loginfo("Got new combined image.")
+        # Convert the images into a OpenCV (numpy) format
+
+        try:
+            rgb_image = self.bridge.imgmsg_to_cv2(rgb_image_message, "bgr8")
+        except CvBridgeError as e:
+            print(e)
+
+        try:
+            depth_image = self.bridge.imgmsg_to_cv2(
+                depth_image_message, "32FC1")
+            # depth_image = self.bridge.imgmsg_to_cv2(depth_image_message, "16UC1")
+        except CvBridgeError as e:
+            print(e)
+
+        # Get the time that the depth image was recieved
+        depth_time = depth_image_message.header.stamp
+
+        # cv2.imshow("Image window",depth_image)
+
+        # Get the dimensions of the image
+        self.dims = rgb_image.shape
+        h = self.dims[0]
+        w = self.dims[1]
+
+        cv_image = rgb_image
+
+        # if we want to use depth image for detection
+        # TODO: test effects
+        # cv_image = cv2.cvtColor(depth_image, cv2.CV_GRAY2RGB)
+        depth_8c = self.bridge.imgmsg_to_cv2(depth_image_message, "8UC1")
+        cv_depth = cv2.merge([depth_8c, depth_8c, depth_8c])
+
+        # Tranform image to gayscale
+        # TODO: decide which better: color or depth - depth seems better
+        # gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(cv_depth, cv2.COLOR_BGR2GRAY)
+
+        # Do histogram equlization
+        img = cv2.equalizeHist(gray)
+
+        # Binarize the image
+        # ret, thresh = cv2.threshold(img, 50, 255, 0)
+        ret, thresh = cv2.threshold(img, 50, 255, cv2.THRESH_BINARY)
+
+        # Extract contours
+        contours, hierarchy = cv2.findContours(
+            thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Example how to draw the contours
+        # cv2.drawContours(img, contours, -1, (255, 0, 0), 3)
+
+        # Fit elipses to all extracted contours
+        elps = []
+        for cnt in contours:
+            #     print cnt
+            # print(cnt.shape)
+
+            # if cnt.shape[0] >= 20:
+            if cnt.shape[0] >= 30:
+                ellipse = cv2.fitEllipse(cnt)
+                elps.append(ellipse)
+
+        # Find two elipses with same centers
+        candidates = []
+        for n in range(len(elps)):
+            for m in range(n + 1, len(elps)):
+                e1 = elps[n]
+                e2 = elps[m]
+                dist = np.sqrt(
+                    ((e1[0][0] - e2[0][0]) ** 2 + (e1[0][1] - e2[0][1]) ** 2))
+                #             print dist
+                if dist < 5:
+                    candidates.append((e1, e2))
+
+        # print("Processing is done! found", len(candidates), "candidates for rings")
+
+        # print(str(candidates))
+
+        # Extract the depth from the depth image
+        for c in candidates:
+            # print("New candidate")
+            # the centers of the ellipses
+            e1 = c[0]
+            e2 = c[1]
+
+            # drawing the ellipses on the image
+            # cv2.ellipse(cv_image, e1, (0, 255, 0), 2)
+            # cv2.ellipse(cv_image, e2, (0, 255, 0), 2)
+            # TODO: Do not draw to prevent problems with color detection when not in debug
+            # cv2.ellipse(cv_image, e1, (0, 100, 0), 2)
+            # cv2.ellipse(cv_image, e2, (0, 100, 0), 2)
+
+            size = (e1[1][0]+e1[1][1])/2
+            center = (e1[0][1], e1[0][0])
+
+            x1 = int(center[0] - size / 2)
+            x2 = int(center[0] + size / 2)
+            x_min = x1 if x1 > 0 else 0
+            x_max = x2 if x2 < cv_image.shape[0] else cv_image.shape[0]
+
+            y1 = int(center[1] - size / 2)
+            y2 = int(center[1] + size / 2)
+            y_min = y1 if y1 > 0 else 0
+            y_max = y2 if y2 < cv_image.shape[1] else cv_image.shape[1]
+
+            # for outer elypse
+            size_outer = (e2[1][0]+e2[1][1])/2
+            center_outer = (e1[0][1], e1[0][0])
+
+            x1_outer = int(center_outer[0] - size_outer / 2)
+            x2_outer = int(center_outer[0] + size_outer / 2)
+            x_min_outer = x1_outer if x1_outer > 0 else 0
+            x_max_outer = x2_outer if x2_outer < cv_image.shape[0] else cv_image.shape[0]
+
+            y1_outer = int(center_outer[1] - size_outer / 2)
+            y2_outer = int(center_outer[1] + size_outer / 2)
+            y_min_outer = y1_outer if y1_outer > 0 else 0
+            y_max_outer = y2_outer if y2_outer < cv_image.shape[1] else cv_image.shape[1]
+
+            # depth_image = self.bridge.imgmsg_to_cv2(depth_image_message, "16UC1")
+
+            # pose = self.get_pose(e1, float(np.nanmean(depth_image[x_min:x_max,y_min:y_max]))/1000.0, depth_time)
+            # depth_ring_center = float(np.nanmedian(depth_image[x_min_outer:x_min, y_min:y_max]))
+            # depth_ring_center = float(np.nanmedian(depth_image[x_min_outer:x_min, round((y_min+y_max)/2)]))
+
+            # upper_ring_line = depth_image[x_min_outer:x_min, round((y_min+y_max)/2)]
+            # lower_ring_line = depth_image[x_max:x_max_outer, round((y_min+y_max)/2)]
+            # depth_ring_content = float(np.nanmedian(np.hstack((upper_ring_line.flatten(), lower_ring_line.flatten()))))
+
+            elipse_mask = self.get_ellypse_array(e1, e2, w, h)
+            depth_ring_content = float(
+                np.nanmedian(depth_image[elipse_mask == 255]))
+
+            center_x = round((x_min+x_max)/2)
+            center_y = round((y_min+y_max)/2)
+
+            center_neigh = 2
+            center_image_depth_slice = depth_image[(center_x-center_neigh):(
+                center_x+center_neigh), (center_y-center_neigh):(center_y+center_neigh)]
+            if len(center_image_depth_slice) <= 0:
+                continue
+
+            depth_ring_center = np.NaN if np.all(
+                center_image_depth_slice != center_image_depth_slice) else np.nanmean(center_image_depth_slice)
+            # depth_ring_center = np.nanmean(center_image_depth_slice)
+
+            # parameter to consider a hole in the middle if depth difference greater than this threshold
+            # from experience around 1.0 is usually the ones with holes
+            # without them difference is 0
+            depth_difference = abs(depth_ring_content - depth_ring_center)
+            # depth_difference_threshold = 0.3
+            depth_difference_threshold = 0.1
+
+            print("Depth difference: " + str(depth_difference))
+
+            # # if there is no hole in the middle -> proceed to next one
+            # if depth_difference < depth_difference_threshold:
+            #     # candidate not valid
+            #     continue
+
+            # if object too far away -> do not consider detected (for better pose estimation)
+            if depth_ring_content > self.max_detection_distance:
+                continue
+
+            # from here on we have a valid detection -> true ring
+
+            pose = self.get_pose(e1, depth_ring_content, depth_time)
+            print("Pose is none")
+            if pose is not None:
+                # self.publish_pose(pose)
+                # print("pose is not NONE")
+                # correctly deal with new potential ring
+                object_image = cv_image[x_min_outer:x_max_outer,
+                                        y_min_outer:y_max_outer]
+                self.new_potential_parking_pose(
+                    object_image, pose, robot_pose=None)
+
+                # DEBUG
+                # self.publish_pose(pose)
+
+                # visualize color image
+                # cv2.imshow("Image window", cv_image[x_min_outer:x_max_outer, y_min_outer:y_max_outer])
+
+                # visualize depth image
+                # Do the necessairy conversion so we can visuzalize it in OpenCV
+
+                # print depth
+                # print("Detected depth: " + str(depth_ring_content))
+
+                """
+                #image_1 = depth_image / 65536.0 * 255
+                image_1 = depth_8c
+                image_1 =image_1/np.max(image_1)*255
+
+                image_viz = np.array(image_1, dtype= np.uint8)
+
+                #image_viz[x_min_outer:x_min, round((y_min+y_max)/2)] = 20
+                #image_viz[x_max:x_max_outer, round((y_min+y_max)/2)] = 20
+
+                #elipse_mask = self.get_ellypse_array(e1, e2, w, h)
+                #image_viz[elipse_mask==255] = 255
+
+                #cv2.imshow("Image window", image_viz[x_min_outer:x_max_outer, y_min_outer:y_max_outer])
+                cv2.imshow("Image window", image_viz)
+
+                cv2.waitKey(1)
+                """
+
+        # if len(candidates)>0:
+                # cv2.imshow("Image window",cv_image)
+                # cv2.imshow("Image window",cv_image[x_min_outer:x_max_outer, y_min_outer:y_max_outer])
+                # cv2.waitKey(1)
+
+
+def test(ring_finder):
+    rospy.sleep(1)
+    print("Publish test")
+    pose = Pose()
+    pose.position.x = 0.3
+    pose.position.y = 0.1
+    pose.position.z = 0.3
+
+    # so that there are no warnings
+    pose.orientation.x = 0
+    pose.orientation.y = 0
+    pose.orientation.z = 0
+    pose.orientation.w = 1
+
+    col = ring_finder.get_marker_color_from_text("black")
+    ring_finder.publish_pose(pose, col)
+    print("Published")
+    print(str(col))
+
+
+def main():
+
+    ring_finder = The_Ring()
+
+    # test
+    # test(ring_finder)
+    # test end
+
+    try:
+        rospy.spin()
+    except KeyboardInterrupt:
+        print("Shutting down")
+
+    cv2.destroyAllWindows()
+
+
+if __name__ == '__main__':
+    main()
