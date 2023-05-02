@@ -30,8 +30,7 @@ ros::Publisher pub_cylinder_marker_array;
 
 tf2_ros::Buffer tf2_buffer;
 
-typedef pcl::PointXYZ PointT;
-
+typedef pcl::PointXYZRGB PointT;
 
 // new variables
 visualization_msgs::MarkerArray cylinder_marker_array; // for pub_cylinder_marker_array
@@ -46,12 +45,12 @@ void downsample_pcl_voxel(const pcl::PCLPointCloud2ConstPtr &cloud_blob,
   pcl::PCLPointCloud2::Ptr cloud_filtered_blob(new pcl::PCLPointCloud2);
   sor.setInputCloud(cloud_blob);
   sor.setLeafSize(0.01f, 0.01f, 0.01f);
-  //sor.setLeafSize(0.005f, 0.005f, 0.005f);
+  // sor.setLeafSize(0.005f, 0.005f, 0.005f);
   sor.filter(*cloud_filtered_blob);
   pcl::fromPCLPointCloud2(*cloud_filtered_blob, *cloud);
 }
 
-void publish_new_marker(geometry_msgs::Pose pose)
+void publish_new_marker(geometry_msgs::Pose pose, double red, double green, double blue)
 {
   visualization_msgs::Marker marker;
   marker.header.frame_id = "map";
@@ -69,9 +68,9 @@ void publish_new_marker(geometry_msgs::Pose pose)
   marker.scale.y = 0.1;
   marker.scale.z = 0.1;
 
-  marker.color.r = 0.0f;
-  marker.color.g = 1.0f;
-  marker.color.b = 0.0f;
+  marker.color.r = red / 256;
+  marker.color.g = green / 256;
+  marker.color.b = blue / 256;
   marker.color.a = 1.0f;
 
   marker.lifetime = ros::Duration();
@@ -90,7 +89,7 @@ double euclidean_distance(geometry_msgs::Pose pose1, geometry_msgs::Pose pose2)
   return std::sqrt(dx * dx + dy * dy);
 }
 
-void check_potential_cylinder(geometry_msgs::Pose pose)
+void check_potential_cylinder(geometry_msgs::Pose pose, double red, double green, double blue)
 {
   double min_distance = std::numeric_limits<double>::infinity();
   int min_distance_index = 0;
@@ -132,7 +131,7 @@ void check_potential_cylinder(geometry_msgs::Pose pose)
 
   if (potential_positions_clusters[min_distance_index] == 50)
   {
-    publish_new_marker(potential_positions[min_distance_index]);
+    publish_new_marker(potential_positions[min_distance_index], red, green, blue);
   }
 }
 
@@ -316,6 +315,28 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
 
     std::cerr << "point_map: " << point_map.point.x << " " << point_map.point.y << " " << point_map.point.z << std::endl;
 
+    // calculate average color of the points
+    double red = 0;
+    double green = 0;
+    double blue = 0;
+
+    for (int iii = 0; iii < cloud_cylinder->points.size(); iii++)
+    {
+      red = red + cloud_cylinder->points[iii].r;
+      green = green + cloud_cylinder->points[iii].g;
+      blue = blue + cloud_cylinder->points[iii].b;
+    }
+
+    red = red / cloud_cylinder->points.size();
+    green = green / cloud_cylinder->points.size();
+    blue = blue / cloud_cylinder->points.size();
+
+    std::cerr << "RGB: " << red << ", " << green << ", " << blue << std::endl;
+    if (red + green + blue > 600.0)
+    {
+      std::cerr << "The object is too bright!" << std::endl;
+      return;
+    }
     geometry_msgs::Pose potential_pose;
 
     potential_pose.position.x = point_map.point.x;
@@ -325,14 +346,14 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
     potential_pose.orientation.y = 0.0;
     potential_pose.orientation.z = 0.0;
     potential_pose.orientation.w = 1.0;
-    if (std::isnan(point_map.point.x) || std::isnan(point_map.point.y) || std::isnan(point_map.point.z)) 
+    if (std::isnan(point_map.point.x) || std::isnan(point_map.point.y) || std::isnan(point_map.point.z))
     {
       std::cerr << "The point_map values are NaN!" << std::endl;
       return;
     }
 
-    //publish_new_marker(potential_pose);
-    check_potential_cylinder(potential_pose);
+    // publish_new_marker(potential_pose);
+    check_potential_cylinder(potential_pose, red, green, blue);
 
     pcl::PCLPointCloud2 outcloud_cylinder;
     pcl::toPCLPointCloud2(*cloud_cylinder, outcloud_cylinder);
