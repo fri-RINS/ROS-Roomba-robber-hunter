@@ -56,8 +56,10 @@ ring_to_approach = None
 parking_to_approach = None
 current_robot_pose = None
 parking_found = False
+id_map_goal = 0
 
 rings_found = []
+cylinders_found=[]
 
 class MyGoal:
     def __init__(self, goal: MoveBaseGoal, type: str):
@@ -83,8 +85,8 @@ class GoalQueue:
         self.completed_ring_goals = []
         self.num_faces = num_faces
         self.greeted_faces = 0
-        self.can_approach_ring = True  # True only for testing
-        self.can_park = True
+        self.can_approach_ring = False  # True only for testing
+        self.can_park = False
         self.running = True  # When All works is done set to False -> stop the robot
         self.init_map_goals(goal_points)
 
@@ -110,14 +112,27 @@ class GoalQueue:
             print(goal.get_goal_coordinates())
 
     def get_next_goal(self):
+        self.check_if_allowed_to_approach_ring()
+
         if len(self.parking_goals) > 0 and self.can_park == True:
+            say_started_parking()
             return self.parking_goals[0]
         if len(self.ring_goals) > 0 and self.can_approach_ring == True:
+            say_approaching_green()
             return self.ring_goals[0]
         elif len(self.face_goals) > 0:
             return self.face_goals[0]
         else:
             return self.map_goals[0]
+        
+    def check_if_allowed_to_approach_ring(self):
+        if self.num_faces > -1 and len(rings_found) > 1 and len(cylinders_found) > -1:
+            print(f"found all faces: {self.num_faces} all rings : {rings_found} and all clyinders: {cylinders_found}")
+            print("Now allowed to approach green ring")
+            self.can_approach_ring = True
+        else:
+            print("Not all faces and rings are yet detected, still cannot approach green ring")
+
 
     def add_face_goal(self, target_pose):
         # Calculate greet point
@@ -199,12 +214,15 @@ class GoalQueue:
     def complete_ring_goal(self, completed_goal):
         self.ring_goals.remove(completed_goal)
         self.completed_ring_goals.append(completed_goal)
+        print("Completed approaching green ring, can_park set to TRUE")
+        self.can_park = True
         return
 
     def complete_parking_goal(self, completed_goal):
         self.running = False
         rospy.loginfo("Shutting down!")
         return
+    
 
 
 def current_robot_pose_callback(data):
@@ -393,6 +411,24 @@ def greet():
     response = sound_client(srv)
     rospy.sleep(1)
 
+def say_started_parking():
+    soundhandle = SoundClient()
+    rospy.sleep(1) # wait for the sound client to initialize
+    # say the phrase "green ring detected"
+    phrase = "Started parking!"
+    rospy.loginfo("Saying started parking!")
+    soundhandle.say(phrase)
+    rospy.sleep(2) # wait for the sound to finish playing 
+
+def say_approaching_green():
+    soundhandle = SoundClient()
+    rospy.sleep(1) # wait for the sound client to initialize
+    # say the phrase "green ring detected"
+    phrase = "Approaching green!"
+    rospy.loginfo("Saying approaching green!")
+    soundhandle.say(phrase)
+    rospy.sleep(2) # wait for the sound to finish playing 
+
 
 def approach_and_greet(goal):
     global face_to_approach
@@ -487,6 +523,18 @@ def parking_marker_callback(data):
     rospy.loginfo("Parking spot has been detected:")
 
 
+def cylinder_marker_callback(data):
+    latest_cylinder = data.markers[-1]
+    latest_cylinder_pose = latest_cylinder.pose
+    latest_cylinder_color = latest_cylinder.color
+
+    cylinder_color = get_color_from_rgba(latest_cylinder_color)
+
+    if cylinder_color not in cylinders_found:
+        say_cylinder_color(cylinder_color)
+        cylinders_found.append(cylinder_color)
+
+
 """def explore_goals(client):
 
     i = 0
@@ -525,7 +573,7 @@ def parking_marker_callback(data):
 """
 
 def do_map_goal(my_goal, goal_queue):
-
+    global id_map_goal
     client.send_goal(my_goal.goal)
 
     goal_x, goal_y = my_goal.get_goal_coordinates()
@@ -537,8 +585,9 @@ def do_map_goal(my_goal, goal_queue):
         rospy.signal_shutdown("Action server not available!")
     else:
         if client.get_result():
-            rospy.loginfo(f"Reached goal (TODO ID): x: {goal_x}, y: {goal_y}")
+            rospy.loginfo(f"Reached goal {id_map_goal}: x: {goal_x}, y: {goal_y}")
             goal_queue.complete_map_goal(my_goal)
+            id_map_goal += 1
             rotate(1, 0.3)
         else:
             rospy.loginfo("Couldn't move robot")
@@ -591,6 +640,7 @@ def explore_goals1(client, goal_queue):
             do_parking_goal(next_goal, goal_queue)
 
 
+
 if __name__ == '__main__':
     # try:
     rospy.init_node('task1_goals', anonymous=True)
@@ -632,6 +682,8 @@ if __name__ == '__main__':
         "ring_markers", MarkerArray, ring_marker_callback, queue_size=10)
     parking_marker_sub = rospy.Subscriber(
         "parking_markers", MarkerArray, parking_marker_callback, queue_size=10)
+    cylinder_marker_sub = rospy.Subscriber(
+        "detected_cylinders", MarkerArray, cylinder_marker_callback, queue_size=10)
     sound_client = rospy.ServiceProxy('play_sound', PlaySound)
 
     goal_queue.print_goals()
