@@ -22,18 +22,19 @@ from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import ColorRGBA
 from std_msgs.msg import String
 import numpy as np
-from math import atan2
+from math import atan2, cos, sin, pi
 from functools import partial
 from sound_play.libsoundplay import SoundClient
 
 
 goals = [
     {'x': 0.1, 'y': -1.65},
-    # {'x': 0.12, 'y': -1.6},
-    # {'x': 0.1, 'y': -1.5},
+    {'x': 0.12, 'y': -1.6},
+    {'x': 0.1, 'y': -1.5},
     {'x': 1.0, 'y': -1.7},
     {'x': 3.1, 'y': -1.05},
     {'x': 2.35, 'y': 1.85},
+    {'x': -1.0, 'y': 1.1}
     # add more goals as needed
 ]
 
@@ -89,6 +90,10 @@ class GoalQueue:
         self.can_park = False
         self.running = True  # When All works is done set to False -> stop the robot
         self.init_map_goals(goal_points)
+        #number of items to detect before approaching green
+        self.faces_to_detect = 0
+        self.cylinders_to_detect = 4
+        self.rings_to_detect = 4
 
     def init_map_goals(self, init_goal_points):
 
@@ -126,12 +131,12 @@ class GoalQueue:
             return self.map_goals[0]
         
     def check_if_allowed_to_approach_ring(self):
-        if self.num_faces > -1 and len(rings_found) > 1 and len(cylinders_found) > -1:
-            print(f"found all faces: {self.num_faces} all rings : {rings_found} and all clyinders: {cylinders_found}")
+        if self.num_faces > self.faces_to_detect and len(rings_found) > self.rings_to_detect and len(cylinders_found) > self.cylinders_to_detect:
+            print(f"found all rings : {rings_found} and all clyinders: {cylinders_found}")
             print("Now allowed to approach green ring")
             self.can_approach_ring = True
         else:
-            print("Not all faces and rings are yet detected, still cannot approach green ring")
+            print("Not all ring and cylinders are yet detected, still cannot approach green ring")
 
 
     def add_face_goal(self, target_pose):
@@ -162,6 +167,7 @@ class GoalQueue:
     def add_ring_goal(self, target_pose):
         # Calculate greet point
         greet_point = calculate_greet_point(target_pose, 0.35)
+        print(f"greet point for ring: {greet_point}")
         publish_marker(greet_point)
         target_point = target_pose.position
 
@@ -452,6 +458,9 @@ def execute_ring(my_goal):
     # Send the goal to the move_base action server
     client.send_goal(goal)
     client.wait_for_result()
+
+    print("The robot has approached the green ring.", client.get_state())
+
     rospy.loginfo("Ring was approached. Now starting to park...")
 
     if not parking_found:
@@ -470,12 +479,49 @@ def execute_ring(my_goal):
 
 def execute_parking(my_goal):
     goal = my_goal.goal
+    x = goal.target_pose.pose.position.x 
+    y = goal.target_pose.pose.position.y
+    center = (x,y)
 
-    # Send the goal to the move_base action server
     client.send_goal(goal)
     client.wait_for_result()
+
+    # print("extending arm for easier parking")
+    # msg = String()
+    # msg.data = "extend"
+    # arm_pub.publish(msg)
+
+    # # Send the goal to the move_base action server
+    # radius = 0.25
+    # num_poses = 8
+    # park_robot_in_circle(center, radius, num_poses)
+
     say_goodbye()
     rospy.loginfo("Roomba was parked in the parking spot.")
+
+def park_robot_in_circle(center,radius,num_poses):
+    goal_poses = []
+    for i in range(num_poses):
+        angle = 2* pi * i /num_poses
+        x = center[0] + radius * cos(angle)
+        y = center[1] + radius * sin(angle)
+        yaw = angle + pi/2
+        goal_poses.append((x,y,sin(yaw/2),cos(yaw/2)))
+        for pose in goal_poses:
+            move_robot_to_goal(pose)
+    return
+
+def move_robot_to_goal(pose):
+    print("parking robot ....")
+    goal = MoveBaseGoal()
+    goal.target_pose.header.frame_id = 'map'
+    goal.target_pose.header.stamp = rospy.Time.now()
+    goal.target_pose.pose.position.x = pose[0]
+    goal.target_pose.pose.position.y = pose[1]
+    goal.target_pose.pose.orientation.w = pose[2]
+
+    client.send_goal(goal)
+    client.wait_for_result()
 
 def face_marker_callback(data_face):
     global face_to_approach
@@ -657,11 +703,12 @@ if __name__ == '__main__':
     goal_points2 = [
         {'x': 0, 'y': -0.5},
         {'x': 0.1, 'y': -1.65},
-        # {'x': 0.12, 'y': -1.6},
-        # {'x': 0.1, 'y': -1.5},
+        {'x': 0.12, 'y': -1.6},
+        {'x': 0.1, 'y': -1.5},
         {'x': 1.0, 'y': -1.7},
         {'x': 3.1, 'y': -1.05},
         {'x': 2.35, 'y': 1.85},
+        {'x': -1.0, 'y': 1.1}
         
         # add more goals as needed
     ]

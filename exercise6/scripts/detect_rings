@@ -53,9 +53,9 @@ class The_Ring:
 
         ###### for filtering detections and publishing unique positions
         #self.object_num_threshold = 15
-        self.object_num_threshold = 1
+        self.object_num_threshold = 6
         #self.object_proximity_threshold = 0.5
-        self.object_proximity_threshold = 0.3
+        self.object_proximity_threshold = 0.5
         # only detect object if distance to it smaller than
         # best for accurate positioning:
         # self.max_detection_distance = 2.0
@@ -514,7 +514,7 @@ class The_Ring:
             #depth_difference_threshold = 0.3
             depth_difference_threshold = 0.1
 
-            print("Depth difference: " + str(depth_difference))
+            #print("Depth difference: " + str(depth_difference))
 
             # if there is no hole in the middle -> proceed to next one
             if depth_difference < depth_difference_threshold:
@@ -528,10 +528,11 @@ class The_Ring:
             # from here on we have a valid detection -> true ring
 
             pose = self.get_pose(e1, depth_ring_content, depth_time)
-            print("Pose is none")
+            #print("Pose is none")
             if pose is not None:
+		        #print("pose is not NONE")
+                print("pose is not none")
                 #self.publish_pose(pose)
-		       #print("pose is not NONE")
                 # correctly deal with new potential ring
                 object_image = cv_image[x_min_outer:x_max_outer, y_min_outer:y_max_outer]
                 self.new_potential_object_pose(object_image, pose, robot_pose=None)

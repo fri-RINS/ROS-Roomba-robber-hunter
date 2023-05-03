@@ -50,8 +50,63 @@ void downsample_pcl_voxel(const pcl::PCLPointCloud2ConstPtr &cloud_blob,
   pcl::fromPCLPointCloud2(*cloud_filtered_blob, *cloud);
 }
 
+std::vector<double> get_color(double red, double green, double blue){
+	  double r = 255;
+    double g = 255;
+    double b = 255;
+    double a = 1;
+
+  if (red > green && red > blue){
+		//Probably red
+		//if(abs(red-green) < 20){
+        if(abs(red-green) < 15){
+			//Probably yellow
+        r = 255;
+        g = 165;
+        b = 0;
+        a = 1;
+        return std::vector<double> { r, g, b, a};
+
+		}
+		
+		    r = 1;
+        g = 0;
+        b = 0;
+        a = 1;
+        return std::vector<double> { r, g, b, a};
+
+	}else if (green > red && green > blue){
+		//Probably green
+		//if(abs(red-green) < 20){
+        if(abs(red-green) < 15){
+			//Probably yellow
+        r = 255;
+        g = 165;
+        b = 0;
+        a = 1;
+        return std::vector<double> { r, g, b, a};
+		}
+		
+        r = 0;
+        g = 1;
+        b = 0;
+        a = 1;
+        return std::vector<double> { r, g, b, a};
+	}else if (blue > red && blue > green){
+		//Probably blue
+        r = 0;
+        g = 0;
+        b = 1;
+        a = 1;
+        return std::vector<double> { r, g, b, a};
+	}
+	
+	return std::vector<double> { r, g, b, a};
+}
+
 void publish_new_marker(geometry_msgs::Pose pose, double red, double green, double blue)
 {
+  std::vector<double> color = get_color(red, green, blue);
   visualization_msgs::Marker marker;
   marker.header.frame_id = "map";
   marker.header.stamp = ros::Time::now();
@@ -68,9 +123,9 @@ void publish_new_marker(geometry_msgs::Pose pose, double red, double green, doub
   marker.scale.y = 0.1;
   marker.scale.z = 0.1;
 
-  marker.color.r = red / 256;
-  marker.color.g = green / 256;
-  marker.color.b = blue / 256;
+  marker.color.r = color[0];
+  marker.color.g = color[1];
+  marker.color.b = color[2];
   marker.color.a = 1.0f;
 
   marker.lifetime = ros::Duration();
@@ -129,7 +184,7 @@ void check_potential_cylinder(geometry_msgs::Pose pose, double red, double green
     std::cerr << "New added group: " << new_ix << " [ " << potential_positions[new_ix].position.x << ", " << potential_positions[new_ix].position.y << ", " << potential_positions[new_ix].position.z << " ]" << std::endl;
   }
 
-  if (potential_positions_clusters[min_distance_index] == 50)
+  if (potential_positions_clusters[min_distance_index] == 20)
   {
     publish_new_marker(potential_positions[min_distance_index], red, green, blue);
   }
@@ -313,7 +368,7 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
 
     std::cerr << "point_camera: " << point_camera.point.x << " " << point_camera.point.y << " " << point_camera.point.z << std::endl;
 
-    std::cerr << "point_map: " << point_map.point.x << " " << point_map.point.y << " " << point_map.point.z << std::endl;
+    std::cerr << "Point_map: " << point_map.point.x << " " << point_map.point.y << " " << point_map.point.z << std::endl;
 
     // calculate average color of the points
     double red = 0;
@@ -332,9 +387,9 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
     blue = blue / cloud_cylinder->points.size();
 
     std::cerr << "RGB: " << red << ", " << green << ", " << blue << std::endl;
-    if (red + green + blue > 600.0)
+    if (abs(red-green) < 10 && abs(red-blue) < 10 && abs(blue-green) < 10)
     {
-      std::cerr << "The object is too bright!" << std::endl;
+      std::cerr << "The object is gray!" << std::endl;
       return;
     }
     geometry_msgs::Pose potential_pose;

@@ -54,7 +54,7 @@
         <collision name='classroom_collision'>
           <geometry>
             <mesh>
-              <uri>file:///home/rokrajher/Ros/src/hw3/exercise7/meshes/task2_meshes/rins_2022_task2_p1.dae
+              <uri>file:///home/team_predictive_pirates/ROS/src/hw3/exercise7/meshes/task2_meshes/rins_2022_task2_p1.dae
 </uri>
               <scale>1 1 1</scale>
             </mesh>
@@ -76,7 +76,7 @@
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>file:///home/rokrajher/Ros/src/hw3/exercise7/meshes/task2_meshes/rins_2022_task2_p1.dae
+              <uri>file:///home/team_predictive_pirates/ROS/src/hw3/exercise7/meshes/task2_meshes/rins_2022_task2_p1.dae
 </uri>
               <scale>1 1 1</scale>
             </mesh>
