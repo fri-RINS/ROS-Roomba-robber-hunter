@@ -60,7 +60,7 @@ class The_Ring:
         # best for accurate positioning:
         # self.max_detection_distance = 2.0
         #self.max_detection_distance = 10.0
-        self.max_detection_distance = 1.9
+        self.max_detection_distance = 1.6
 
         # poses of potential objects (1 pose per group)
         self.potential_object_poses = []

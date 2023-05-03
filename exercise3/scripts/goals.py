@@ -92,8 +92,8 @@ class GoalQueue:
         self.init_map_goals(goal_points)
         #number of items to detect before approaching green
         self.faces_to_detect = 0
-        self.cylinders_to_detect = 4
-        self.rings_to_detect = 4
+        self.cylinders_to_detect = 0
+        self.rings_to_detect = 0
 
     def init_map_goals(self, init_goal_points):
 
@@ -131,7 +131,7 @@ class GoalQueue:
             return self.map_goals[0]
         
     def check_if_allowed_to_approach_ring(self):
-        if self.num_faces > self.faces_to_detect and len(rings_found) > self.rings_to_detect and len(cylinders_found) > self.cylinders_to_detect:
+        if self.num_faces > self.faces_to_detect and len(rings_found) >= self.rings_to_detect  and len(cylinders_found) >= self.cylinders_to_detect:
             print(f"found all rings : {rings_found} and all clyinders: {cylinders_found}")
             print("Now allowed to approach green ring")
             self.can_approach_ring = True
