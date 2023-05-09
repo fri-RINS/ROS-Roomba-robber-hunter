@@ -180,18 +180,22 @@ class face_localizer:
 
         # Get the next rgb and depth images that are posted from the camera
         try:
+
             rgb_image_message = rospy.wait_for_message(
                 "/camera/rgb/image_raw", Image)
+   
         except Exception as e:
             print(e)
             return 0
 
         try:
+            
             depth_image_message = rospy.wait_for_message(
-                "/camera/depth/image_raw", Image)
+                "/camera/depth_registered/image", Image)
         except Exception as e:
             print(e)
             return 0
+
 
         # Convert the images into a OpenCV (numpy) format
 
@@ -331,7 +335,7 @@ def main():
 
     time.sleep(2)
     face_finder = face_localizer()
-    rate = rospy.Rate(1.5)
+    rate = rospy.Rate(0.5)
     while not rospy.is_shutdown():
         face_finder.find_faces()
         rate.sleep()

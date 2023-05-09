@@ -1,4 +1,11 @@
 <launch>
+  <!-- Sound Player service -->
+  <node pkg="sound_play" type="soundplay_node.py" name="soundplay_node"  output="screen">
+  </node>
+  
+  <node pkg="exercise4" type="play_sound.py" name="play_sound"  output="screen">
+  </node>
+  
   
   <!-- Map server -->
   <arg name="map_file" default="$(find exercise3)/maps/real_map.yaml"/>
@@ -8,12 +15,13 @@
   <arg name="initial_pose_x" default="0.0"/>
   <arg name="initial_pose_y" default="0.0"/>
   <arg name="initial_pose_a" default="0.0"/>
-  <include file="$(find turtlebot_navigation)/launch/includes/amcl/amcl.launch.xml">
+  <include file="$(find turtlebot_custom_navigation)/launch/includes/amcl/amcl.launch.xml">
     <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
     <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
     <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
   </include>
 
   <!-- Move base -->
-  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
+  <include file="$(find turtlebot_custom_navigation)/launch/includes/move_base.launch.xml"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_rviz_launchers)/rviz/navigation.rviz"/>
 </launch>

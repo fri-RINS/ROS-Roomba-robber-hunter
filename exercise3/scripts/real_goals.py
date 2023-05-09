@@ -480,6 +480,7 @@ def execute_ring(my_goal):
         rospy.sleep(3)
 
     rotate(1,0.3)
+    rotate(1,0.3)
 
 def execute_parking(my_goal):
     goal = my_goal.goal
@@ -641,6 +642,7 @@ def do_map_goal(my_goal, goal_queue):
             goal_queue.complete_map_goal(my_goal)
             id_map_goal += 1
             rotate(1, 0.3)
+            rotate(1,0.3)
         else:
             rospy.loginfo("Couldn't move robot")
 
@@ -707,14 +709,15 @@ if __name__ == '__main__':
     ]
 
     goal_points2 = [
-        {'x': 0, 'y': -0.5},
-        {'x': 0.1, 'y': -1.65},
-        {'x': 0.12, 'y': -1.6},
-        {'x': 0.1, 'y': -1.5},
-        {'x': 1.0, 'y': -1.7},
-        {'x': 3.1, 'y': -1.05},
-        {'x': 2.35, 'y': 1.85},
-        {'x': -1.0, 'y': 1.1}
+        #{"x": 0.300000, "y": -0.000000},
+        {"x": 0.10000, "y": 0.300000},
+        {"x": -0.600000, "y": 0.600000},
+        # {"x": -1.049999, "y": 1.000000},
+        # {"x": -0.950000, "y": 0.050000},
+        # {"x": -1.400000, "y": -0.299999},
+        # {"x": -1.799999, "y": -1.150000},
+        # {"x": -0.299999, "y": -1.100000},
+        # {"x": -0.450000, "y": -1.600000}
         
         # add more goals as needed
     ]

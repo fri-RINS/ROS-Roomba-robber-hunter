@@ -19,7 +19,7 @@ find_package(OpenCV)
 catkin_package(CATKIN_DEPENDS rospy roscpp)
 
 catkin_install_python(PROGRAMS scripts/goals.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-
+catkin_install_python(PROGRAMS scripts/real_goals.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 add_executable(map_goals src/map_goals.cpp)
 target_link_libraries(map_goals ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
