@@ -64,9 +64,10 @@ rings_found = []
 cylinders_found=[]
 
 class MyGoal:
-    def __init__(self, goal: MoveBaseGoal, type: str):
+    def __init__(self, goal: MoveBaseGoal, type: str, do_rotate: bool=True):
         self.goal = goal
         self.type = type
+        self.do_rotate = do_rotate
         # self.is_completed = False
 
     # def makeCompleted(self):
@@ -92,8 +93,8 @@ class GoalQueue:
         self.running = True  # When All works is done set to False -> stop the robot
         self.init_map_goals(goal_points)
         #number of items to detect before approaching green
-        self.faces_to_detect = 0
-        self.cylinders_to_detect = 3
+        self.faces_to_detect = 4
+        self.cylinders_to_detect = 0
         self.rings_to_detect = 0
 
     def init_map_goals(self, init_goal_points):
@@ -106,7 +107,7 @@ class GoalQueue:
             goal.target_pose.pose.position.y = goal_point['y']
             goal.target_pose.pose.orientation.w = 1.0
 
-            myGoal = MyGoal(goal, "map")
+            myGoal = MyGoal(goal, "map", goal_point['do_rotate'])
             self.map_goals.append(myGoal)
 
     def print_goals(self):
@@ -118,7 +119,7 @@ class GoalQueue:
             print(goal.get_goal_coordinates())
 
     def get_next_goal(self):
-        self.check_if_allowed_to_approach_ring()
+        # self.check_if_allowed_to_approach_ring()
 
         if len(self.parking_goals) > 0 and self.can_park == True:
             say_started_parking()
@@ -145,7 +146,7 @@ class GoalQueue:
 
     def add_face_goal(self, target_pose):
         # Calculate greet point
-        greet_point = calculate_greet_point(target_pose, 0.3)
+        greet_point = calculate_greet_point(target_pose, 0.45)
         publish_marker(greet_point)
         target_point = target_pose.position
 
@@ -217,9 +218,9 @@ class GoalQueue:
     def complete_face_goal(self, completed_goal):
         self.face_goals.remove(completed_goal)
         self.completed_face_goals.append(completed_goal)
-        if len(self.completed_face_goals) == self.num_faces:
+        if len(self.completed_face_goals) == self.faces_to_detect:
             rospy.loginfo("All faces greeted.")
-            self.can_approach_ring = True
+            self.shutdown()
 
     def complete_ring_goal(self, completed_goal):
         self.ring_goals.remove(completed_goal)
@@ -229,6 +230,13 @@ class GoalQueue:
         return
 
     def complete_parking_goal(self, completed_goal):
+        rospy.sleep(2)
+        self.running = False
+        rospy.loginfo("Shutting down!")
+        return
+
+    def shutdown(self):
+
         self.running = False
         rospy.loginfo("Shutting down!")
         return
@@ -641,8 +649,14 @@ def do_map_goal(my_goal, goal_queue):
             rospy.loginfo(f"Reached goal {id_map_goal}: x: {goal_x}, y: {goal_y}")
             goal_queue.complete_map_goal(my_goal)
             id_map_goal += 1
-            rotate(1, 0.3)
-            rotate(1,0.3)
+            
+            if my_goal.do_rotate:
+                rotate(1, 0.25)
+                rotate(1, 0.25)
+                rotate(1, 0.25)
+                rotate(1, 0.25)
+            else:
+                rotate(1, 0.6)
         else:
             rospy.loginfo("Couldn't move robot")
 
@@ -709,20 +723,20 @@ if __name__ == '__main__':
     ]
 
     goal_points2 = [
-        #{"x": 0.300000, "y": -0.000000},
-        {"x": 0.10000, "y": 0.300000},
-        {"x": -0.600000, "y": 0.600000},
-        # {"x": -1.049999, "y": 1.000000},
-        # {"x": -0.950000, "y": 0.050000},
-        # {"x": -1.400000, "y": -0.299999},
-        # {"x": -1.799999, "y": -1.150000},
-        # {"x": -0.299999, "y": -1.100000},
-        # {"x": -0.450000, "y": -1.600000}
+        {"x": 0.700000, "y": 0.050000, "do_rotate" : False},
+        {"x": 1.40000, "y": 0.450000, "do_rotate" : True},
+        {"x": 0.8500000, "y": 1.050000, "do_rotate" : True}, 
+        {"x": 0.850000, "y": 0.40000, "do_rotate" : False},
+        {"x": -0.110000, "y": -0.700000, "do_rotate" : True},
+        {"x": 0.700000, "y": 0.050000, "do_rotate" : False},
+        {"x": 1.150000, "y": -1.050000, "do_rotate" : True},
+        {"x": 0.700000, "y": 0.050000, "do_rotate" : False},
+
         
         # add more goals as needed
     ]
     # add more goals as needed
-    goal_queue = GoalQueue(goal_points2, num_faces=3)
+    goal_queue = GoalQueue(goal_points2, num_faces=4)
 
     cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
@@ -746,6 +760,8 @@ if __name__ == '__main__':
 
     rate = rospy.Rate(1)
     # explore_goals(client)
+    rotate(1,0.3)
+
     explore_goals1(client, goal_queue)
 
     # except rospy.ROSInterruptException:

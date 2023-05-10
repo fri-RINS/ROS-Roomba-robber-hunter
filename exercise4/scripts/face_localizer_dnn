@@ -30,12 +30,12 @@ class Cluster:
         self.centroid = np.mean(pts, axis=0)
 
     def add_new_point(self, point):
-        if self.n > 5:
+        if self.n > 3:
             return
         self.points.append(point)
         self.n += 1
         self.compute_centroid()
-        if self.n == 4:
+        if self.n == 2:
             self.show_marker = True
 
 
@@ -246,7 +246,7 @@ class face_localizer:
                 face_distance = float(np.nanmean(depth_image[y1:y2, x1:x2]))
                 
                 
-                if np.isnan(face_distance) or face_distance > 1.8:
+                if np.isnan(face_distance) or face_distance > 1.35:
                     print('Distance to face (discarded)', face_distance)
                     continue
 
@@ -335,7 +335,7 @@ def main():
 
     time.sleep(2)
     face_finder = face_localizer()
-    rate = rospy.Rate(0.5)
+    rate = rospy.Rate(4)
     while not rospy.is_shutdown():
         face_finder.find_faces()
         rate.sleep()
