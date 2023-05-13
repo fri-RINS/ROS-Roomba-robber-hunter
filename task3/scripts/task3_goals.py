@@ -61,6 +61,8 @@ current_robot_pose = None
 parking_found = False
 id_map_goal = 0
 green_pose = None
+do_poster_detection_pub = None
+poster_found = False
 
 rings_found = []
 cylinders_found=[]
@@ -520,7 +522,7 @@ def say_approaching_green():
     rospy.sleep(2) # wait for the sound to finish playing 
 
 
-def approach_and_greet(goal):
+def approach_face(goal):
     global face_to_approach
 
     # Send the goal to the move_base action server
@@ -528,9 +530,6 @@ def approach_and_greet(goal):
     # rospy.loginfo(f"Approaching the face #{num_faces}")
     client.wait_for_result()
     rospy.loginfo("Face was approached.")
-
-    # SAY HELLO
-    greet()
 
     # Remove aprroached face from face_to_approach
     face_to_approach = None
@@ -657,9 +656,10 @@ def parking_marker_callback(data):
     rospy.loginfo("Parking spot has been detected:")
 
 def poster_callback(data):
+    global poster_found
+    poster_found = True
     poster = Poster(data.color, data.image, data.prize)
     rospy.loginfo(f"Poster detected. Ring color: {poster.color}, Prize: {poster.prize}")
-
 
 
 
@@ -739,7 +739,26 @@ def do_map_goal(my_goal, goal_queue):
 
 
 def do_face_goal(my_goal, goal_queue):
-    approach_and_greet(my_goal.goal)
+    global poster_found
+    approach_face(my_goal.goal)
+    msg = String()
+    msg.data = "start"
+    do_poster_detection_pub.publish(msg)
+    print("Start poster")
+    rospy.sleep(4)
+    
+    print("stop poster")
+    msg = String()
+    msg.data = "stop"
+    do_poster_detection_pub.publish(msg)
+
+    if not poster_found:    
+        # SAY HELLO
+        greet()
+    else:
+        rospy.loginfo("This is a poster. Will not greet.")
+        poster_found = None
+
     goal_queue.complete_face_goal(my_goal)
     return
 
@@ -802,10 +821,10 @@ if __name__ == '__main__':
     ]
 
     goal_points2 = [
-        #{'x': 0, 'y': -1},
+        # {'x': 0, 'y': -1},
         {'x': 1, 'y': 0},
         {'x': 2.5, 'y': 1.3},
-        #{'x': 1, 'y': 2.5},
+        # {'x': 1, 'y': 2.5},
         #{'x': 0.12, 'y': -1.6},
         #{'x': 0.1, 'y': -1.5},
         #{'x': 1.0, 'y': -1.7},
@@ -825,7 +844,7 @@ if __name__ == '__main__':
     markers_pub = rospy.Publisher('greet_point_markers', MarkerArray, queue_size=1000)
     arm_pub = rospy.Publisher('/arm_command', String, queue_size=10)
     start_park_detection_pub = rospy.Publisher('/start_park_detection', String, queue_size=1)
-
+    do_poster_detection_pub = rospy.Publisher('/do_poster_detection', String, queue_size=1)
     face_marker_sub = rospy.Subscriber(
         "face_markers", MarkerArray, face_marker_callback, queue_size=10)
     poster_sub = rospy.Subscriber(

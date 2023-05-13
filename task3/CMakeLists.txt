@@ -29,4 +29,4 @@ catkin_package(CATKIN_DEPENDS rospy roscpp std_msgs
   geometry_msgs
   message_runtime)
 
-catkin_install_python(PROGRAMS scripts/face_and_poster_detector.py scripts/task3_goals.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+catkin_install_python(PROGRAMS scripts/face_and_poster_detector.py scripts/task3_goals.py scripts/poster_detector.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
