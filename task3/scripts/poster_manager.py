@@ -16,8 +16,6 @@ from cv_bridge import CvBridge, CvBridgeError
 from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import ColorRGBA
 import time
-import pyocr
-import pyocr.builders
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from PIL import Image as PILImage
