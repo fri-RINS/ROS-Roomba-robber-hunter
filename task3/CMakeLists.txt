@@ -28,5 +28,9 @@ catkin_package(CATKIN_DEPENDS rospy roscpp std_msgs
   sensor_msgs
   geometry_msgs
   message_runtime)
+  
+include_directories(include ${catkin_INCLUDE_DIRS})
 
-catkin_install_python(PROGRAMS scripts/face_and_poster_detector.py scripts/task3_goals.py scripts/poster_detector.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+catkin_install_python(PROGRAMS scripts/face_and_poster_detector.py scripts/poster_detector.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+

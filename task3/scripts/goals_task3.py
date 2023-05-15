@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 
 import rospy
 from tf2_geometry_msgs import do_transform_pose
@@ -26,6 +26,9 @@ from math import atan2, cos, sin, pi
 from functools import partial
 from sound_play.libsoundplay import SoundClient
 from task3.msg import PosterMessage
+from poster_manager import PosterDetector
+
+
 
 
 goals = [
@@ -741,16 +744,14 @@ def do_map_goal(my_goal, goal_queue):
 def do_face_goal(my_goal, goal_queue):
     global poster_found
     approach_face(my_goal.goal)
-    msg = String()
-    msg.data = "start"
-    do_poster_detection_pub.publish(msg)
-    print("Start poster")
+    
+
+    pd = PosterDetector(my_goal.goal.target_pose.pose)
+    pd.find_faces()
+
     rospy.sleep(4)
     
-    print("stop poster")
-    msg = String()
-    msg.data = "stop"
-    do_poster_detection_pub.publish(msg)
+
 
     if not poster_found:    
         # SAY HELLO

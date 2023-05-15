@@ -58,9 +58,8 @@ class Cluster:
             self.show_marker = True
 
 
-class face_localizer:
+class PosterDetector:
     def __init__(self):
-        rospy.init_node('poster_detector', anonymous=True)
 
         # An object we use for converting images between ROS format and OpenCV format
         self.bridge = CvBridge()
@@ -391,15 +390,16 @@ def do_poster_detection_callback(data):
         can_detect = False    
 
 def main():
+    rospy.init_node('poster_detector', anonymous=True)
     global can_detect
-    face_finder = face_localizer()
+    find_posters = PosterDetector()
     rate = rospy.Rate(4)
     poster = Poster(None, None, None, None)
     do_poster_detection_sub = rospy.Subscriber("do_poster_detection", String, do_poster_detection_callback, queue_size=10)
     
     while not rospy.is_shutdown():
         if can_detect:
-            face_finder.find_faces()
+            find_posters.find_faces()
             can_detect = False
         rate.sleep()
 
