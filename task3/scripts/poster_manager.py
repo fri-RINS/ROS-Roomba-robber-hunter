@@ -30,7 +30,7 @@ can_detect = False
 poster = None
 
 class Poster:
-    def __init__(self, color, image, prize, pose):
+    def __init__(self, color, image, prize):
         self.color = color
         self.pose = None
         self.image = image
@@ -142,10 +142,11 @@ class PosterDetector:
 
     def check_poster(self, image, face_image, pose):
         
+        poster = None
         text = self.img_to_text(image).lower()
     
         # Print the extracted text
-        rospy.loginfo('Extracted text: {}'.format(text))
+        print('Extracted text: {}'.format(text))
         colors = ["blue", "green", "black", "red"]
 
         if "wan" in text:
@@ -171,21 +172,18 @@ class PosterDetector:
                 print("No number found in text.")
                 poster_prize = -1
 
-            poster = Poster(poster_ring_color, face_image, poster_prize, pose)
+            poster = Poster(poster_ring_color, face_image, poster_prize)
             
         else:
             print("This is a face.")
-
-
-
+            
         #cv2.imshow('Image', cv_image)
         #cv2.waitKey(0)
-        
         return poster
 
 
     def detect_poster(self):
-        print('I got a new image!')
+        print('I got a new potential poster!')
 
         # Get the next rgb and depth images that are posted from the camera
         try:
@@ -269,6 +267,8 @@ class PosterDetector:
                     publish = True
                 if publish and potential_poster is not None:
                     self.poster_markers_pub.publish(self.poster_marker_array)
+
+                return potential_poster
    
 
 def main():

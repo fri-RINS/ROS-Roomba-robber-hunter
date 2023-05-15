@@ -27,6 +27,7 @@ from functools import partial
 from sound_play.libsoundplay import SoundClient
 from task3.msg import PosterMessage
 from poster_manager import PosterDetector
+from poster_manager import Poster
 
 
 
@@ -64,24 +65,18 @@ current_robot_pose = None
 parking_found = False
 id_map_goal = 0
 green_pose = None
-do_poster_detection_pub = None
-poster_found = False
+
 
 rings_found = []
 cylinders_found=[]
 
-class Poster:
-    def __init__(self, color, image, prize):
-        self.color = color
-        self.image = image
-        self.prize = prize
-
 class MyGoal:
-    def __init__(self, goal: MoveBaseGoal, type: str, color: str):
+    def __init__(self, goal: MoveBaseGoal, type: str, color: str, pose=None):
         self.goal = goal
         self.type = type
         # self.is_completed = False
         self.color = color
+        self.pose = pose
 
     # def makeCompleted(self):
     #     self.is_completed = True
@@ -109,6 +104,7 @@ class GoalQueue:
         self.faces_to_detect = 0
         self.cylinders_to_detect = 3
         self.rings_to_detect = 0
+        self.posters = []
 
     def init_map_goals(self, init_goal_points):
 
@@ -178,7 +174,7 @@ class GoalQueue:
         goal.target_pose.pose.orientation.z = math.sin(theta/2.0)
         goal.target_pose.pose.orientation.w = math.cos(theta/2.0)
 
-        my_face_goal = MyGoal(goal, "face", None)
+        my_face_goal = MyGoal(goal, "face", None, target_pose)
         self.face_goals.append(my_face_goal)
         return
 
@@ -658,15 +654,6 @@ def parking_marker_callback(data):
     parking_found = True
     rospy.loginfo("Parking spot has been detected:")
 
-def poster_callback(data):
-    global poster_found
-    poster_found = True
-    poster = Poster(data.color, data.image, data.prize)
-    rospy.loginfo(f"Poster detected. Ring color: {poster.color}, Prize: {poster.prize}")
-
-
-
-
 def cylinder_marker_callback(data):
     global cylinder_found
     latest_cylinder = data.markers[-1]
@@ -681,42 +668,6 @@ def cylinder_marker_callback(data):
 
     cylinder_found = latest_cylinder
 
-"""def explore_goals(client):
-
-    i = 0
-    while True:
-
-        if face_to_approach is not None:
-            approach_and_greet(face_to_approach)
-        else:
-            rotate(1, 0.3)
-
-        goal = goals[i % len(goals)]
-
-        goal_x = goal['x']
-        goal_y = goal['y']
-
-        goal = MoveBaseGoal()
-        goal.target_pose.header.frame_id = "map"
-        goal.target_pose.header.stamp = rospy.Time.now()
-        goal.target_pose.pose.position.x = goal_x
-        goal.target_pose.pose.position.y = goal_y
-        goal.target_pose.pose.orientation.w = 1.0
-
-        client.send_goal(goal)
-        rospy.loginfo(f"Sending to coordinates: x: {goal_x}, y: {goal_y}")
-        wait = client.wait_for_result()
-        if not wait:
-            rospy.logerr("Action server not available!")
-            rospy.signal_shutdown("Action server not available!")
-        else:
-            if client.get_result():
-                rospy.loginfo(f"Reached goal {i}: x: {goal_x}, y: {goal_y}")
-            else:
-                rospy.loginfo("Couldn't move robot")
-
-        i += 1
-"""
 
 def do_map_goal(my_goal, goal_queue):
     global id_map_goal
@@ -742,23 +693,22 @@ def do_map_goal(my_goal, goal_queue):
 
 
 def do_face_goal(my_goal, goal_queue):
-    global poster_found
+
     approach_face(my_goal.goal)
-    
+    rospy.loginfo("Checking if this is a poster.")
+    pd = PosterDetector(my_goal.pose)
 
-    pd = PosterDetector(my_goal.goal.target_pose.pose)
-    pd.detect_poster()
+    poster = pd.detect_poster()
 
-    rospy.sleep(4)
-    
-
-
-    if not poster_found:    
+    if poster == None:
+        rospy.loginfo("This is a FACE. Let's ask questions.")    
         # SAY HELLO
         greet()
+        # TODO
+        # CONVERSATION
     else:
-        rospy.loginfo("This is a poster. Will not greet.")
-        poster_found = None
+        rospy.loginfo("This is a POSTER. Will not greet.")
+        goal_queue.posters.append(poster)
 
     goal_queue.complete_face_goal(my_goal)
     return
@@ -822,10 +772,10 @@ if __name__ == '__main__':
     ]
 
     goal_points2 = [
-        # {'x': 0, 'y': -1},
+        #{'x': 0, 'y': -1},
         {'x': 1, 'y': 0},
         {'x': 2.5, 'y': 1.3},
-        # {'x': 1, 'y': 2.5},
+        {'x': 1, 'y': 2.5},
         #{'x': 0.12, 'y': -1.6},
         #{'x': 0.1, 'y': -1.5},
         #{'x': 1.0, 'y': -1.7},
@@ -845,11 +795,8 @@ if __name__ == '__main__':
     markers_pub = rospy.Publisher('greet_point_markers', MarkerArray, queue_size=1000)
     arm_pub = rospy.Publisher('/arm_command', String, queue_size=10)
     start_park_detection_pub = rospy.Publisher('/start_park_detection', String, queue_size=1)
-    do_poster_detection_pub = rospy.Publisher('/do_poster_detection', String, queue_size=1)
     face_marker_sub = rospy.Subscriber(
         "face_markers", MarkerArray, face_marker_callback, queue_size=10)
-    poster_sub = rospy.Subscriber(
-        "posters", PosterMessage, poster_callback, queue_size=10)
     ring_marker_sub = rospy.Subscriber(
         "ring_markers", MarkerArray, ring_marker_callback, queue_size=10)
     parking_marker_sub = rospy.Subscriber(

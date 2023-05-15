@@ -38,12 +38,12 @@ class Cluster:
 
     def add_new_point(self, point):
         self.n += 1
-        if self.n > 3:
+        if self.n > 5:
             return
         rospy.loginfo(f"Points in the cluster: {self.n}")
         self.points.append(point)
         self.compute_centroid()
-        if self.n == 3:
+        if self.n == 5:
             self.show_marker = True
 
 
