@@ -747,7 +747,7 @@ def do_face_goal(my_goal, goal_queue):
     
 
     pd = PosterDetector(my_goal.goal.target_pose.pose)
-    pd.find_faces()
+    pd.detect_poster()
 
     rospy.sleep(4)
     

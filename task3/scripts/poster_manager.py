@@ -24,6 +24,7 @@ from PIL import Image as PILImage
 import re
 from task3.msg import PosterMessage
 from std_msgs.msg import String
+import pytesseract
 
 can_detect = False
 poster = None
@@ -87,17 +88,61 @@ class PosterDetector:
         return np.sqrt((point1.x - point2[0])**2 + (point1.y - point2[1])**2 + (point1.z - point2[2])**2)
 
 
+    def img_to_text(self, image):
+        img = image
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+ 
+        # Performing OTSU threshold
+        ret, thresh1 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+        
+        # Specify structure shape and kernel size.
+        # Kernel size increases or decreases the area
+        # of the rectangle to be detected.
+        # A smaller value like (10, 10) will detect
+        # each word instead of a sentence.
+        rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (18, 18))
+        
+        # Applying dilation on the threshold image
+        dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
+        
+        # Finding contours
+        contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL,
+                                                        cv2.CHAIN_APPROX_NONE)
+        
+        # Creating a copy of image
+        im2 = img.copy()
+        
+        # A text file is created and flushed
+        poster_text = ""
+        
+        # Looping through the identified contours
+        # Then rectangular part is cropped and passed on
+        # to pytesseract for extracting text from it
+        # Extracted text is then written into the text file
+        # for cnt in contours:
+        #     x, y, w, h = cv2.boundingRect(cnt)
+            
+        #     # Drawing a rectangle on copied image
+        #     rect = cv2.rectangle(im2, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            
+        #     # Cropping the text block for giving input to OCR
+        #     cropped = im2[y:y + h, x:x + w]
+            
+        # Apply OCR on the cropped image
+        text = pytesseract.image_to_string(im2)
+        
+        # Appending the text into file
+        poster_text += text
+        #print(poster_text)
+
+        # cv2.imshow("ImWindow", im2)
+        # cv2.waitKey(1)
+
+        return text
+
     def check_poster(self, image, face_image, pose):
-        cv_image = image
-
-        poster = None
-
-        # Convert the CV image to a PIL image
-        pil_image = PILImage.fromarray(cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB))
         
-        # Perform OCR on the PIL image
-        text = self.ocr_tool.image_to_string(pil_image, lang=self.ocr_lang, builder=pyocr.builders.TextBuilder()).lower()
-        
+        text = self.img_to_text(image).lower()
     
         # Print the extracted text
         rospy.loginfo('Extracted text: {}'.format(text))
@@ -224,30 +269,17 @@ class PosterDetector:
                     publish = True
                 if publish and potential_poster is not None:
                     self.poster_markers_pub.publish(self.poster_marker_array)
-
-def do_poster_detection_callback(data):
-    global poster
-    global can_detect
-    print(data.data)
-    if data.data == "start":
-        rospy.loginfo("Starting poster detection now.")
-        can_detect = True
-    elif data.data == "stop":
-        can_detect = False    
+   
 
 def main():
     rospy.init_node('poster_detector', anonymous=True)
-    global can_detect
-    find_posters = PosterDetector()
+    find_posters = PosterDetector(None)
     rate = rospy.Rate(4)
-    poster = Poster(None, None, None, None)
-    do_poster_detection_sub = rospy.Subscriber("do_poster_detection", String, do_poster_detection_callback, queue_size=10)
-    
-    while not rospy.is_shutdown():
-        if can_detect:
-            find_posters.detect_poster()
-            can_detect = False
-        rate.sleep()
+    find_posters.detect_poster()
+
+    # while not rospy.is_shutdown():
+    #     find_posters.detect_poster()
+    #     rate.sleep()
 
     cv2.destroyAllWindows()
 
