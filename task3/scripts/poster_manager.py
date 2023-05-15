@@ -73,10 +73,6 @@ class PosterDetector:
         self.poster_markers_pub = rospy.Publisher(
             'poster_markers', MarkerArray, queue_size=1000)
 
-        # Initialize the OCR tool
-        self.ocr_tool = pyocr.get_available_tools()[0]
-        self.ocr_lang = 'eng'
-
         # Initialize the CvBridge
         self.bridge = CvBridge()
 
