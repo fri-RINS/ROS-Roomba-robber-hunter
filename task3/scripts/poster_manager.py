@@ -28,11 +28,12 @@ can_detect = False
 poster = None
 
 class Poster:
-    def __init__(self, color, image, prize):
+    def __init__(self, color, image, prize, is_poster):
         self.color = color
         self.pose = None
         self.image = image
         self.prize = prize
+        self.is_poster = is_poster
 
 
 class PosterDetector:
@@ -134,6 +135,13 @@ class PosterDetector:
 
         return text
 
+    def check_strings_in_text(self, strings, text):
+        for string in strings:
+            if string in text:
+                return True
+        return False
+
+
     def check_poster(self, image, face_image, pose):
         
         poster = None
@@ -142,16 +150,17 @@ class PosterDetector:
         # Print the extracted text
         print('Extracted text: {}'.format(text))
         colors = ["blue", "green", "black", "red"]
+        strings = ["blue", "green", "black", "red", "wan", "ted", "btc", "bic"]
 
-        if "wan" in text:
-            print("This is a poster.")
+        if self.check_strings_in_text(strings, text):
+            #print("This is a poster.")
             is_poster = True
             poster_ring_color = None
             poster_prize = -1
             words = ["blue", "green", "black", "red"]
             for color in colors:
                 if color in text:
-                    print(f"Ring color is {color}")
+                    #print(f"Ring color is {color}")
                     poster_ring_color = color
                     break
                 else:
@@ -161,20 +170,34 @@ class PosterDetector:
             if match:
                 number = int(match.group()) * 1000
                 poster_prize = number
-                print("Prize:", number)
+                #print("Prize:", number)
             else:
-                print("No number found in text.")
+                #print("No number found in text.")
                 poster_prize = -1
 
-            poster = Poster(poster_ring_color, face_image, poster_prize)
-            
-        else:
-            print("This is a face.")
+            poster = Poster(poster_ring_color, face_image, poster_prize, True)
+        
             
         #cv2.imshow('Image', cv_image)
         #cv2.waitKey(0)
         return poster
 
+    def find_poster(self):
+        poster = Poster(None, None, None, False)
+        for i in range(3):
+            potential_poster = self.detect_poster()
+            if potential_poster != None:
+                poster.image = potential_poster.image
+                poster.is_poster = True
+                if potential_poster.color != "unknown":
+                    poster.color = potential_poster.color
+                
+        if poster.is_poster == True:
+            print(f"This is a POSTER. Color: {poster.color}")
+            return poster
+        else:
+            print("This is a face.")
+            return None
 
     def detect_poster(self):
         print('I got a new potential poster!')
@@ -239,16 +262,15 @@ class PosterDetector:
                 marker.frame_locked = False
                 marker.lifetime = rospy.Duration.from_sec(300)
                 marker.id = self.marker_num
-                marker.scale = Vector3(0.1, 0.1, 0.1)
-                marker.color = ColorRGBA(0, 1, 0, 1)
+                marker.color = ColorRGBA(1, 1, 1, 1)
+                marker.scale = Vector3(0.2, 0.2, 0.2)
                 # distances = np.array([])
 
                 rgb_image[y1:y2, x1:x2, :] = 0
                 potential_poster = self.check_poster(rgb_image, face_region, self.pose)
                 if potential_poster != None:
                     print("new poster marker appended")
-                    marker.color = ColorRGBA(1, 1, 1, 1)
-                    marker.scale = Vector3(0.2, 0.2, 0.2)
+                    
 
                     img_msg = self.bridge.cv2_to_imgmsg(potential_poster.image, encoding='bgr8')
                     msg = PosterMessage()
@@ -256,11 +278,11 @@ class PosterDetector:
                     msg.color = potential_poster.color
                     msg.prize = potential_poster.prize
                     msg.header.stamp = rospy.Time(0)
-                    self.poster_pub.publish(msg)
                     self.poster_marker_array.markers.append(marker)
                     publish = True
                 if publish and potential_poster is not None:
-                    self.poster_markers_pub.publish(self.poster_marker_array)
+                    if marker.pose != None:
+                        self.poster_markers_pub.publish(self.poster_marker_array)
 
                 return potential_poster
    
@@ -269,7 +291,7 @@ def main():
     rospy.init_node('poster_detector', anonymous=True)
     find_posters = PosterDetector(None)
     rate = rospy.Rate(4)
-    find_posters.detect_poster()
+    find_posters.find_poster()
 
     # while not rospy.is_shutdown():
     #     find_posters.detect_poster()

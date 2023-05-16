@@ -215,7 +215,7 @@ class face_localizer:
         text = self.ocr_tool.image_to_string(pil_image, lang=self.ocr_lang, builder=pyocr.builders.TextBuilder()).lower()
         
         # Print the extracted text
-        rospy.loginfo('Extracted text: {}'.format(text))
+        #rospy.loginfo('Extracted text: {}'.format(text))
         colors = ["blue", "green", "black", "red"]
 
         if "wan" in text:

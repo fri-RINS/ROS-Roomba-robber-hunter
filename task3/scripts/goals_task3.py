@@ -695,10 +695,18 @@ def do_map_goal(my_goal, goal_queue):
 def do_face_goal(my_goal, goal_queue):
 
     approach_face(my_goal.goal)
+
+    twist_msg = Twist()
+    twist_msg.linear.x = 0.2
+    cmd_vel_pub.publish(twist_msg)
+    rospy.sleep(1)
+    twist_msg.linear.x = 0.0
+    cmd_vel_pub.publish(twist_msg)
+
     rospy.loginfo("Checking if this is a poster.")
     pd = PosterDetector(my_goal.pose)
 
-    poster = pd.detect_poster()
+    poster = pd.find_poster()
 
     if poster == None:
         rospy.loginfo("This is a FACE. Let's ask questions.")    
