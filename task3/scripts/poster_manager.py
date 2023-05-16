@@ -194,10 +194,30 @@ class PosterDetector:
                 
         if poster.is_poster == True:
             print(f"This is a POSTER. Color: {poster.color}")
+            self.publish_marker(self.pose)
+            print("new poster marker appended")
             return poster
         else:
             print("This is a face.")
             return None
+
+    def publish_marker(self, pose):
+        marker = Marker()
+        marker.header.stamp = rospy.Time(0)
+        marker.header.frame_id = 'map'
+        marker.pose = self.pose
+        marker.type = Marker.CUBE
+        marker.action = Marker.ADD
+        marker.frame_locked = False
+        marker.lifetime = rospy.Duration.from_sec(300)
+        marker.id = self.marker_num
+        marker.color = ColorRGBA(1, 1, 1, 1)
+        marker.scale = Vector3(0.2, 0.2, 0.2)
+
+        self.poster_marker_array.markers.append(marker)
+
+        if marker.pose != None:
+            self.poster_markers_pub.publish(self.poster_marker_array)
 
     def detect_poster(self):
         print('I got a new potential poster!')
@@ -253,37 +273,14 @@ class PosterDetector:
                 #cv2.waitKey(1)
 
                 publish = False
-                marker = Marker()
-                marker.header.stamp = rospy.Time(0)
-                marker.header.frame_id = 'map'
-                marker.pose = self.pose
-                marker.type = Marker.CUBE
-                marker.action = Marker.ADD
-                marker.frame_locked = False
-                marker.lifetime = rospy.Duration.from_sec(300)
-                marker.id = self.marker_num
-                marker.color = ColorRGBA(1, 1, 1, 1)
-                marker.scale = Vector3(0.2, 0.2, 0.2)
+                
                 # distances = np.array([])
 
-                rgb_image[y1:y2, x1:x2, :] = 0
-                potential_poster = self.check_poster(rgb_image, face_region, self.pose)
-                if potential_poster != None:
-                    print("new poster marker appended")
-                    
-
-                    img_msg = self.bridge.cv2_to_imgmsg(potential_poster.image, encoding='bgr8')
-                    msg = PosterMessage()
-                    msg.image = img_msg
-                    msg.color = potential_poster.color
-                    msg.prize = potential_poster.prize
-                    msg.header.stamp = rospy.Time(0)
-                    self.poster_marker_array.markers.append(marker)
-                    publish = True
-                if publish and potential_poster is not None:
-                    if marker.pose != None:
-                        self.poster_markers_pub.publish(self.poster_marker_array)
-
+                rgb_image_no_face = np.copy(rgb_image)
+                rgb_image_no_face[y1:y2, x1:x2] = 0
+                potential_poster = self.check_poster(rgb_image_no_face, face_region, self.pose)
+                
+                
                 return potential_poster
    
 
@@ -291,7 +288,9 @@ def main():
     rospy.init_node('poster_detector', anonymous=True)
     find_posters = PosterDetector(None)
     rate = rospy.Rate(4)
-    find_posters.find_poster()
+    poster = find_posters.find_poster()
+
+    #cv2.imwrite("src/hw3/task3/img_test/image2.jpg", poster.image)
 
     # while not rospy.is_shutdown():
     #     find_posters.detect_poster()
