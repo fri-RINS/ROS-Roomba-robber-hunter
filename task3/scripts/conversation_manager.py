@@ -45,7 +45,7 @@ class ConversationManager:
         self.ready_for_input = False
 
         self.STOP_NOW = False
-        print("MICROPHONE LIST", sr.Microphone.list_microphone_names())
+        #print("MICROPHONE LIST", sr.Microphone.list_microphone_names())
         # You can get the list of available devices: sr.Microphone.list_microphone_names()
         # You can set the fault microphone like this: self. mic = sr.Microphone(device_index=3)
         # where the device_index is the position in the list from the first command.
@@ -140,7 +140,7 @@ class ConversationManager:
     
     def check_for_colors(self,string):
         color_regex = re.compile(r"\b(red|blue|green|yellow|black)\b", re.IGNORECASE)
-        matches = re.findall(color_regex, string)
+        matches = list(set(re.findall(color_regex, string)))
         
         if matches:
             print("Colors found in the string:", matches)
@@ -148,6 +148,18 @@ class ConversationManager:
             print("No colors found in the string.")
 
         return matches
+    
+    def check_if_person_knows(self,string):
+        color_regex = re.compile(r"\b(no|know|not|don't)\b", re.IGNORECASE)
+        matches = re.findall(color_regex, string)
+        
+        if matches:
+            print("Person said: " + string)
+            return True
+        else:
+            print("Person didnt say no.")
+
+        return False
 
     """
     Plays appropriate sound in string prameter.
@@ -175,13 +187,17 @@ class ConversationManager:
         answer = self._recognized_text
         print("Response we got: "  + answer)
 
-        matches = self.check_for_colors(answer)
+        colors = self.check_for_colors(answer)
+        no_said = self.check_if_person_knows(answer)
 
-        if len(matches) == 2:
+        if len(colors) == 2:
             print("Person knew something, got two potencial cylinders")
-            return matches
+            return colors
+        if no_said:
+            print("person knew nothing.")
+            return "No"
         
-        print("person knew nothing.")
+        print("Didnt understand, try writing in console.")
         return None
 
     def ask_question(self, question_func):
@@ -204,6 +220,7 @@ class ConversationManager:
 
             # otherwise ask the question again
             self.say_something("i did not understand")
+            rospy.sleep(2)
 
         self.ready_for_input = False
 
@@ -221,10 +238,15 @@ class ConversationManager:
         
         cylinders_to_approach = self.ask_question(self.get_cylinder_colors)
 
-        if cylinders_to_approach is not None:
+        if cylinders_to_approach is not None and not "NO":
             print("We got the information needed")
         else:
             print("Still need to speek to other people")
+
+       
+
+        self.say_something("Thank you, goodbye.")
+        rospy.sleep(2)
 
         self.destroy_ui()
 

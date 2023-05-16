@@ -28,6 +28,7 @@ from sound_play.libsoundplay import SoundClient
 from task3.msg import PosterMessage
 from poster_manager import PosterDetector
 from poster_manager import Poster
+from conversation_manager import ConversationManager
 
 
 
@@ -714,6 +715,12 @@ def do_face_goal(my_goal, goal_queue):
         greet()
         # TODO
         # CONVERSATION
+        soundhandle = SoundClient()
+    # for testing
+        st = ConversationManager()
+        colors = st.talkToPerson(soundhandle)
+        print(f"Colors: {colors}")
+        
     else:
         rospy.loginfo("This is a POSTER. Will not greet.")
         goal_queue.posters.append(poster)
@@ -781,8 +788,8 @@ if __name__ == '__main__':
 
     goal_points2 = [
         #{'x': 0, 'y': -1},
-        {'x': 1, 'y': 0},
-        {'x': 2.5, 'y': 1.3},
+        #{'x': 1, 'y': 0},
+        #{'x': 2.5, 'y': 1.3},
         {'x': 1, 'y': 2.5},
         #{'x': 0.12, 'y': -1.6},
         #{'x': 0.1, 'y': -1.5},

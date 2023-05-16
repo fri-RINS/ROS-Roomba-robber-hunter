@@ -148,7 +148,7 @@ class PosterDetector:
         text = self.img_to_text(image).lower()
     
         # Print the extracted text
-        print('Extracted text: {}'.format(text))
+        #print('Extracted text: {}'.format(text))
         colors = ["blue", "green", "black", "red"]
         strings = ["blue", "green", "black", "red", "wan", "ted", "btc", "bic"]
 
