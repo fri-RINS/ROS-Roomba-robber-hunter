@@ -8,7 +8,7 @@ from std_msgs.msg import String
 class Arm_Mover():
     def __init__(self):
 
-        rospy.init_node('arm_mover', anonymous=True)
+        
         
         self.arm_movement_pub = rospy.Publisher('/turtlebot_arm/arm_controller/command', JointTrajectory, queue_size=1)
         self.arm_user_command_sub = rospy.Subscriber("/arm_command", String, self.new_user_command)
@@ -60,6 +60,7 @@ class Arm_Mover():
             self.send_command = False
 
 if __name__ == "__main__":
+    rospy.init_node('arm_mover', anonymous=True)
     am = Arm_Mover()
     time.sleep(.5)
     am.arm_movement_pub.publish(am.retract)
