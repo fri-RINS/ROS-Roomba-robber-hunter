@@ -22,6 +22,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from PIL import Image as PILImage
 import re
+from compare_image_manager import ImageCompareManager
 
 from move_arm import Arm_Mover
 
@@ -147,8 +148,8 @@ class CylinderFaceManager:
                 face_region = rgb_image[y1:y2, x1:x2]
 
                 # Visualize the extracted face
-                cv2.imshow("ImWindow", face_region)
-                cv2.waitKey(0)
+                # cv2.imshow("ImWindow", face_region)
+                # cv2.waitKey(0)
 
                 return face_region
 
@@ -164,12 +165,20 @@ def main():
     while face_region is None:
         face_region = cylinder_face_manager.find_faces()
         rate.sleep()
-    print(face_region)
+    #print(face_region)
 
-    cylinder_face_manager.retract_camera()
+    #cylinder_face_manager.retract_camera()
+    # cv2.imwrite("src/hw3/task3/img_test/image_cylinder.jpg", face_region)
 
+    icm = ImageCompareManager(face_region)
+    icm.compare_images(face_region, icm.poster_image1)
+    icm.compare_images(face_region, icm.poster_image2)
 
-    cv2.destroyAllWindows()
+    cv2.imshow("ImWindow", face_region)
+    cv2.waitKey(0)
+    rospy.sleep(10)
+
+    #cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
