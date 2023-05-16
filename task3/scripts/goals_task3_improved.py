@@ -71,25 +71,27 @@ class MyGoal:
 
 class GoalQueue:
     def __init__(self, goal_points, num_faces):
+
         self.map_goals = []
         self.face_goals = []
-        self.ring_goals = []
-        self.parking_goals = []
         self.completed_face_goals = []
-        self.completed_ring_goals = []
         self.num_faces = num_faces
         self.greeted_faces = 0
         self.running = True  # When All works is done set to False -> stop the robot
         self.init_map_goals(goal_points)
         #number of items to detect before approaching green
-        self.faces_to_detect = 0
         self.cylinders_to_detect = 3
-        self.rings_to_detect = 0
+        self.rings_to_detect = 3
         self.posters = []
         self.mm = MarkerManager()
         self.sm = SpeakingManager()
         self.id_map_goal = 0
         self.current_robot_pose = None
+        self.cylinder_colors_to_check = None
+        #two cylinders that need to be approached
+        self.cylinders_to_approach = None
+        #all rings
+        self.rings = None
 
         self.cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
@@ -126,6 +128,30 @@ class GoalQueue:
         else:
             return self.map_goals[0]
 
+    def check_if_everything_detected(self):
+        n_rings = len(self.mm.rings)
+        n_cylinder = len(self.mm.cylinders)
+        n_faces = len(self.completed_face_goals)
+
+        if n_rings >= self.rings_to_detect and n_cylinder >= self.cylinders_to_detect and n_faces >= self.num_faces:
+            print("Detected all rings, cylinders and and approached all faces, Running = False.")
+            self.rings = self.mm.rings
+            self.cylinders_to_approach = self.find_cylinders(self.cylinder_colors_to_check)
+            self.running = False
+            
+    def find_cylinders(self,colors):
+
+        cylinders_to_visit = []
+        for c in colors:
+            for cylinder in self.mm.cylinders:
+                if cylinder.color == c:
+                    cylinders_to_visit.append(cylinder)
+
+        return cylinders_to_visit
+
+
+
+        
 
     def add_face_goal(self, target_pose):
         # Calculate greet point
@@ -162,7 +188,6 @@ class GoalQueue:
         self.completed_face_goals.append(completed_goal)
         if len(self.completed_face_goals) == self.num_faces:
             rospy.loginfo("All faces greeted.")
-            self.can_approach_ring = True
     
     def approach_face(self,goal):
 
@@ -200,8 +225,12 @@ class GoalQueue:
             soundhandle = SoundClient()
         # for testing
             st = ConversationManager()
-            colors = st.talkToPerson(soundhandle)
-            print(f"Colors: {colors}")
+            response = st.talkToPerson(soundhandle)
+            print(f"Response: {response}")
+
+            if isinstance(response,list):
+                print("Response is array of cylinder colors!")
+                self.cylinder_colors_to_check = response
             
         else:
             rospy.loginfo("This is a POSTER. Will not greet.")
