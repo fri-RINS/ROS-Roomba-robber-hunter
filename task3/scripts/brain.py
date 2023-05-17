@@ -23,6 +23,7 @@ class Brain:
         #{'x': 3.1, 'y': -1.05},
         #{'x': 2.35, 'y': 1.85},
         #{'x': -1.0, 'y': 1.1}
+
         
         # add more goals as needed
     ]
@@ -52,6 +53,7 @@ if __name__ == '__main__':
 
     wanted_poster = max(posters,key=lambda p: p.prize)
 
+    
 
     brain.cylinder_manager = CylinderManager(wanted_poster,cylinders_to_approach)
 

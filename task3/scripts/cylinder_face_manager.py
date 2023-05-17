@@ -150,7 +150,7 @@ class CylinderFaceManager:
                 # Visualize the extracted face
                 # cv2.imshow("ImWindow", face_region)
                 # cv2.waitKey(0)
-
+                #cv2.imwrite("src/hw3/task3/img_test/image_cyl_whole.jpg", rgb_image)
                 return face_region
 
                 # Find the distance to the detected face
@@ -168,7 +168,7 @@ def main():
     #print(face_region)
 
     #cylinder_face_manager.retract_camera()
-    # cv2.imwrite("src/hw3/task3/img_test/image_cylinder.jpg", face_region)
+    
 
     icm = ImageCompareManager(face_region)
     icm.compare_images(face_region, icm.poster_image1)

@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 from poster_manager import Poster
 from marker_manager import Cylinder
 import rospy
@@ -9,15 +11,12 @@ from math import atan2
 import math
 from std_msgs.msg import ColorRGBA
 from geometry_msgs.msg import PoseStamped, Point, TransformStamped
+import time
+from geometry_msgs.msg import Pose
+
 
 class CylinderManager:
     def __init__(self,wanted_poster:Poster, cylinders: list):
-
-        self.poster = wanted_poster
-        self.cylinders = cylinders
-        self.cylinder_goals = self.init_cylinder_goals()
-        self.current_robot_pose = None
-
 
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
         self.client.wait_for_server()
@@ -25,6 +24,15 @@ class CylinderManager:
         self.odom_sub = rospy.Subscriber(
         '/amcl_pose', PoseWithCovarianceStamped, self.current_robot_pose_callback)
         self.safe_distance = 0.3
+        rospy.sleep(2)
+
+        self.poster = wanted_poster
+        self.cylinders = cylinders
+        self.cylinder_goals = self.init_cylinder_goals()
+        self.current_robot_pose = None
+
+
+        
 
     def current_robot_pose_callback(self,data):
 
@@ -42,17 +50,17 @@ class CylinderManager:
             rospy.loginfo(f"Point to greet face: {greet_point}")
 
             goal = MoveBaseGoal()
-            goal.cylinder_pose.header.frame_id = 'map'
-            goal.cylinder_pose.header.stamp = rospy.Time.now()
-            goal.cylinder_pose.pose.position.x = greet_point.x
-            goal.cylinder_pose.pose.position.y = greet_point.y
+            goal.target_pose.header.frame_id = 'map'
+            goal.target_pose.header.stamp = rospy.Time.now()
+            goal.target_pose.pose.position.x = greet_point.x
+            goal.target_pose.pose.position.y = greet_point.y
             # goal.cylinder_pose.pose.orientation.w = 1.0
 
             # Calculate the orientation of the goal
             v = [target_point.x - greet_point.x, target_point.y - greet_point.y]
             theta = atan2(v[1], v[0])
-            goal.cylinder_pose.pose.orientation.z = math.sin(theta/2.0)
-            goal.cylinder_pose.pose.orientation.w = math.cos(theta/2.0)
+            goal.target_pose.pose.orientation.z = math.sin(theta/2.0)
+            goal.target_pose.pose.orientation.w = math.cos(theta/2.0)
 
             self.client.send_goal(goal)
             self.client.wait_for_result()
@@ -127,7 +135,23 @@ class CylinderManager:
                         nearest_point.y + new_distance * unit_vector.y,
                         nearest_point.z + new_distance * unit_vector.z)
 
-        self.publish_marker(new_point, color=ColorRGBA(0, 0, 1, 1))
+        #self.publish_marker(new_point, color=ColorRGBA(0, 0, 1, 1))
         print("GREEEEEEEEEEEEEEET")
         return new_point
 
+def main():
+    rospy.init_node('cylinder_manager_node', anonymous=True)
+    time.sleep(2)
+    rate = rospy.Rate(2)
+
+
+    pose = Pose()
+    pose.position.x = 0.5378066572479696
+    pose.position.y = 0.33111667322396626
+    pose.position.z = 0.2870562880963201
+    cyl = Cylinder("blue", pose)
+    cm = CylinderManager(None, [cyl])
+
+
+if __name__ == '__main__':
+    main()
