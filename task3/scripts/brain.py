@@ -4,6 +4,7 @@ from goals_task3_improved import GoalQueue, explore_goals
 import rospy
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from cylinder_manager import CylinderManager
 
 
 
@@ -27,6 +28,7 @@ class Brain:
     ]
     # add more goals as needed
         self.gq = GoalQueue(self.map_goals,num_faces=3)
+        self.cylinder_manager = None
 
 
 
@@ -45,6 +47,17 @@ if __name__ == '__main__':
     print("cylinders to approach:")
     for i, cyl in enumerate(cylinders_to_approach):
         print(f"Cylinder {i}: color: {cyl.color}")
+
+    posters = goal_queue.posters
+
+    wanted_poster = max(posters,key=lambda p: p.prize)
+
+
+    brain.cylinder_manager = CylinderManager(wanted_poster,cylinders_to_approach)
+
+
+
+
 
     rate = rospy.Rate(1)
         
