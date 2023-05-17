@@ -79,9 +79,10 @@ class GoalQueue:
         self.running = True  # When All works is done set to False -> stop the robot
         self.init_map_goals(goal_points)
         #number of items to detect before approaching green
-        self.cylinders_to_detect = 1
-        self.rings_to_detect = 1
+        self.cylinders_to_detect = 2
+        self.rings_to_detect = 0
         self.persons_to_approach = 1
+        self.posters_to_detect = 1
         self.posters = []
         self.mm = MarkerManager()
         self.sm = SpeakingManager()
@@ -136,8 +137,14 @@ class GoalQueue:
         n_rings = len(self.mm.rings)
         n_cylinder = len(self.mm.cylinders)
         n_faces = self.persons_approached
+        n_posters = len(self.posters)
 
-        if n_rings >= self.rings_to_detect and n_cylinder >= self.cylinders_to_detect and n_faces >= self.persons_to_approach:
+        print(f"FACES: {n_faces}")
+        print(f"CYLINDERS: {n_cylinder}")
+        print(f"RINGS: {n_rings}")
+
+
+        if n_posters >= self.posters_to_detect and n_rings >= self.rings_to_detect and n_cylinder >= self.cylinders_to_detect and n_faces >= self.persons_to_approach:
             print("Detected all rings, cylinders and and approached all faces, Running = False.")
             self.rings = self.mm.rings
             self.cylinders_to_approach = self.find_cylinders(self.cylinder_colors_to_check)
@@ -151,7 +158,6 @@ class GoalQueue:
                     cylinders_to_visit.append(cylinder)
 
         return cylinders_to_visit
-
 
 
         
@@ -388,8 +394,6 @@ class GoalQueue:
 def explore_goals(goal_queue:GoalQueue):
     while goal_queue.running:
 
-        goal_queue.check_if_everything_detected()
-
         if goal_queue.mm.face_to_approach:
             goal_queue.add_face_goal(goal_queue.mm.face_to_approach)
             goal_queue.mm.face_to_approach = None
@@ -401,6 +405,7 @@ def explore_goals(goal_queue:GoalQueue):
         elif next_goal.type == "face":
             goal_queue.do_face_goal(next_goal)
 
+        goal_queue.check_if_everything_detected()
         
 
     return goal_queue.cylinders_to_approach

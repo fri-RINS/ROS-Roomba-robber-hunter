@@ -184,6 +184,13 @@ void check_potential_cylinder(geometry_msgs::Pose pose, double red, double green
     std::cerr << "New added group: " << new_ix << " [ " << potential_positions[new_ix].position.x << ", " << potential_positions[new_ix].position.y << ", " << potential_positions[new_ix].position.z << " ]" << std::endl;
   }
 
+  std::cerr << "Cylinder 1231231231211231231231231231231331 z: " << potential_positions[min_distance_index].position.z << std::endl;
+    if (potential_positions[min_distance_index].position.z < 0.23)
+    {
+
+      return;
+    }
+
   if (potential_positions_clusters[min_distance_index] == 20)
   {
     publish_new_marker(potential_positions[min_distance_index], red, green, blue);
@@ -314,6 +321,15 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
     return;
   }
 
+    // Calculate the height of the cylinder
+  // double cylinder_height = coefficients_cylinder->values[5] - coefficients_cylinder->values[2];
+  // std::cerr << "Cylinder height: " << cylinder_height << std::endl;
+  // if (abs(cylinder_height) < 1.2)
+  // {
+
+  //   return;
+  // }
+
   std::cerr << "Inliers_num_cylinder: " << inliers_cylinder->indices.size() << std::endl;
 
   // Write the cylinder inliers to disk
@@ -348,6 +364,8 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
     point_camera.point.y = centroid[1];
     point_camera.point.z = centroid[2];
 
+    
+
     try
     {
       time_test = ros::Time::now();
@@ -369,6 +387,13 @@ void cloud_cb(const pcl::PCLPointCloud2ConstPtr &cloud_blob)
     std::cerr << "point_camera: " << point_camera.point.x << " " << point_camera.point.y << " " << point_camera.point.z << std::endl;
 
     std::cerr << "Point_map: " << point_map.point.x << " " << point_map.point.y << " " << point_map.point.z << std::endl;
+    
+    std::cerr << "Cylinder z: " << point_map.point.z << std::endl;
+    // if (centroid[2] < 0.7)
+    // {
+
+    //   return;
+    // }
 
     // calculate average color of the points
     double red = 0;

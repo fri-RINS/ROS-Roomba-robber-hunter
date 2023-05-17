@@ -15,8 +15,9 @@ class Brain:
         self.map_goals =  [
         #{'x': 0, 'y': -1},
         {'x': 1, 'y': 0},
-        #{'x': 2.5, 'y': 1.3},
-        {'x': 1, 'y': 2.5},
+        {'x': 2.5, 'y': 0},
+        {'x': 2.5, 'y': 1.3},
+        #{'x': 1, 'y': 2.5},
         #{'x': 0.12, 'y': -1.6},
         #{'x': 0.1, 'y': -1.5},
         #{'x': 1.0, 'y': -1.7},
@@ -52,10 +53,24 @@ if __name__ == '__main__':
     posters = goal_queue.posters
 
     wanted_poster = max(posters,key=lambda p: p.prize)
-
+    prison_color = wanted_poster.color
     
 
     brain.cylinder_manager = CylinderManager(wanted_poster,cylinders_to_approach)
+
+    # Ring Color --> Ring Pose
+    # TODO
+
+    # ParkingManager()
+
+        # 1. Approach {prison_color} ring
+
+        # 2. Park the robot
+            # ParkingDetector()
+
+
+
+
 
 
 

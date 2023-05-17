@@ -49,6 +49,29 @@ class MarkerManager:
 
         colors = ["yellow", "green", "black", "blue", "red"]
         """
+        #print(rgba)
+        res = "white"
+        if rgba == ColorRGBA(1, 0, 0, 1):
+            res = "red"
+        if rgba == ColorRGBA(0, 1, 0, 1):
+            res = "green"
+        if rgba == ColorRGBA(0, 0, 1, 1):
+            res = "blue"
+        if rgba == ColorRGBA(0, 0, 0, 1):
+            res = "black"
+        if rgba == ColorRGBA(255, 165, 0, 1):
+            res = "yellow"
+
+        return res
+    
+    def get_color_from_rgba_cylinder(self,rgba):
+        """
+        Returns the vector with marker color according to string
+
+        colors = ["yellow", "green", "black", "blue", "red"]
+        """
+        r, g, b, a = rgba
+        rgba = ColorRGBA(r,g,b,a)
         res = "white"
         if rgba == ColorRGBA(1, 0, 0, 1):
             res = "red"
@@ -101,7 +124,7 @@ class MarkerManager:
     def cylinder_marker_callback(self,data):
         latest_cylinder = data.markers[-1]
         latest_cylinder_pose = latest_cylinder.pose
-        latest_cylinder_color = self.get_color_from_rgba(latest_cylinder.color)
+        latest_cylinder_color = latest_cylinder.color
 
         cylinder_color = self.get_color_from_rgba(latest_cylinder_color)
 
@@ -109,5 +132,5 @@ class MarkerManager:
             self.sm.say_cylinder_color(cylinder_color)
             self.cylinder_colors.append(cylinder_color)
 
-            cylinder = Cylinder(latest_cylinder_color,latest_cylinder_pose)
+            cylinder = Cylinder(cylinder_color,latest_cylinder_pose)
             self.cylinders.append(cylinder)

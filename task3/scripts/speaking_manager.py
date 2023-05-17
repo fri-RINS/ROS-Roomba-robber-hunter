@@ -60,3 +60,12 @@ class SpeakingManager:
         rospy.loginfo("Saying approaching green!")
         soundhandle.say(phrase)
         rospy.sleep(2) # wait for the sound to finish playing 
+
+    def say_arrest_robber(self):
+        soundhandle = self.sound_handler
+        rospy.sleep(1) # wait for the sound client to initialize
+        # say the phrase "green ring detected"
+        phrase = "You are arrested. Enter the robot car immediately!"
+        rospy.loginfo("You are arrested. Enter the robot car immediately!")
+        soundhandle.say(phrase)
+        rospy.sleep(2) # wait for the sound to finish playing 
