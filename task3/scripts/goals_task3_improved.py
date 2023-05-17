@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-#!/usr/bin/python3
-
 import rospy
 from tf2_geometry_msgs import do_transform_pose
 import tf2_ros
@@ -381,7 +379,7 @@ class GoalQueue:
 
 
 
-def explore_goals1(goal_queue:GoalQueue):
+def explore_goals(goal_queue:GoalQueue):
     while goal_queue.running:
 
         if goal_queue.mm.face_to_approach:
@@ -394,6 +392,10 @@ def explore_goals1(goal_queue:GoalQueue):
             goal_queue.do_map_goal(next_goal)
         elif next_goal.type == "face":
             goal_queue.do_face_goal(next_goal)
+
+        goal_queue.check_if_everything_detected()
+
+    return goal_queue.cylinders_to_approach
     
 
 
@@ -434,4 +436,4 @@ if __name__ == '__main__':
     goal_queue.print_goals()
 
     rate = rospy.Rate(1)
-    explore_goals1(goal_queue)
+    explore_goals(goal_queue)
