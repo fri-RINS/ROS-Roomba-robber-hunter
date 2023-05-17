@@ -18,55 +18,45 @@ class ImageCompareManager():
         self.poster_image2 = cv2.imread("src/hw3/task3/img_test/image2.jpg")
 
         self.detector = dlib.get_frontal_face_detector()
-        self.predictor = dlib.shape_predictor('path_to_shape_predictor_model.dat')
-        self.face_recognizer = dlib.face_recognition_model_v1('path_to_face_recognition_model.dat')
+        #self.predictor = dlib.shape_predictor('path_to_shape_predictor_model.dat')
+        self.face_recognizer = dlib.face_recognition_model_v1('src/hw3/task3/img_test/dlib_face_recognition_resnet_model_v1.dat')
 
     def extract_face_embeddings(self, image):
         # Detect faces in the image
-        faces = self.detector(image)
         
-        # Iterate over detected faces
-        face_embeddings = []
-        for face in faces:
-            # Align face
-            shape = self.predictor(image, face)
-            aligned_face = dlib.get_face_chip(image, shape)
-            
-            # Extract face embedding
-            face_embedding = self.face_recognizer.compute_face_descriptor(aligned_face)
-            face_embeddings.append(face_embedding)
+       # color_image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        face_embedding = self.face_recognizer.compute_face_descriptor(image)
+
         
-        return face_embeddings
+        return face_embedding
 
     def compare_images(self, image1, image2):
         # Load the images
 
         # Convert images to grayscale
-        gray1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
-        gray2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
+        #gray1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+        #gray2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
 
         # # # Resize the faces to a common size for better comparison
-        # face1 = cv2.resize(gray1, (160, 160))
-        # face2 = cv2.resize(gray2, (160, 160))
+        face1 = cv2.resize(image1, (150, 150))
+        face2 = cv2.resize(image2, (150, 150))
 
 
         # # Normalize pixel values
-        # face1 = face1.astype("float32") / 255.0
-        # face2 = face2.astype("float32") / 255.0
+        face1 = face1.astype("float32") / 255.0
+        face2 = face2.astype("float32") / 255.0
 
         # Extract face embeddings for both images
-        embeddings1 = self.extract_face_embeddings(gray1)
-        embeddings2 = self.extract_face_embeddings(gray2)
+        embedding1 = np.array(self.extract_face_embeddings(face1)).reshape(-1, 1)
 
-        # Compare feature vectors using cosine similarity
-        similarity_scores = []
-        for embedding1 in embeddings1:
-            for embedding2 in embeddings2:
-                similarity_score = cosine_similarity([np.array(embedding1)], [np.array(embedding2)])[0][0]
-                similarity_scores.append(similarity_score)
+        embedding2 = np.array(self.extract_face_embeddings(face2)).reshape(-1, 1)
+
+
+        
+        similarity_score = cosine_similarity(embedding1, embedding2)
 
         # Compute average similarity score
-        average_similarity_score = np.mean(similarity_scores)
+        average_similarity_score = np.mean(similarity_score)
  
         print("SIMILARITY:", average_similarity_score)
 

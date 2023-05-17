@@ -376,7 +376,7 @@ class GoalQueue:
 
     def current_robot_pose_callback(self,data):
 
-        current_robot_pose = data.pose.pose
+        self.current_robot_pose = data.pose.pose
         # print(current_robot_pose)
 
 
@@ -416,8 +416,8 @@ if __name__ == '__main__':
 
     goal_points2 = [
         #{'x': 0, 'y': -1},
-        #{'x': 1, 'y': 0},
-        #{'x': 2.5, 'y': 1.3},
+        {'x': 1, 'y': 0},
+        {'x': 2.5, 'y': 1.3},
         {'x': 1, 'y': 2.5},
         #{'x': 0.12, 'y': -1.6},
         #{'x': 0.1, 'y': -1.5},
