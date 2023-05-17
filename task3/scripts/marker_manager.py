@@ -101,7 +101,7 @@ class MarkerManager:
     def cylinder_marker_callback(self,data):
         latest_cylinder = data.markers[-1]
         latest_cylinder_pose = latest_cylinder.pose
-        latest_cylinder_color = latest_cylinder.color
+        latest_cylinder_color = self.get_color_from_rgba(latest_cylinder.color)
 
         cylinder_color = self.get_color_from_rgba(latest_cylinder_color)
 

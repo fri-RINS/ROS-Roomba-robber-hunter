@@ -74,12 +74,14 @@ class GoalQueue:
         self.face_goals = []
         self.completed_face_goals = []
         self.num_faces = num_faces
+        self.persons_approached = 0
         self.greeted_faces = 0
         self.running = True  # When All works is done set to False -> stop the robot
         self.init_map_goals(goal_points)
         #number of items to detect before approaching green
-        self.cylinders_to_detect = 3
-        self.rings_to_detect = 3
+        self.cylinders_to_detect = 1
+        self.rings_to_detect = 1
+        self.persons_to_approach = 1
         self.posters = []
         self.mm = MarkerManager()
         self.sm = SpeakingManager()
@@ -90,6 +92,10 @@ class GoalQueue:
         self.cylinders_to_approach = None
         #all rings
         self.rings = None
+
+        self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
+        self.client.wait_for_server()
+
 
         self.cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
@@ -129,16 +135,15 @@ class GoalQueue:
     def check_if_everything_detected(self):
         n_rings = len(self.mm.rings)
         n_cylinder = len(self.mm.cylinders)
-        n_faces = len(self.completed_face_goals)
+        n_faces = self.persons_approached
 
-        if n_rings >= self.rings_to_detect and n_cylinder >= self.cylinders_to_detect and n_faces >= self.num_faces:
+        if n_rings >= self.rings_to_detect and n_cylinder >= self.cylinders_to_detect and n_faces >= self.persons_to_approach:
             print("Detected all rings, cylinders and and approached all faces, Running = False.")
             self.rings = self.mm.rings
             self.cylinders_to_approach = self.find_cylinders(self.cylinder_colors_to_check)
             self.running = False
             
     def find_cylinders(self,colors):
-
         cylinders_to_visit = []
         for c in colors:
             for cylinder in self.mm.cylinders:
@@ -190,9 +195,9 @@ class GoalQueue:
     def approach_face(self,goal):
 
         # Send the goal to the move_base action server
-        client.send_goal(goal)
+        self.client.send_goal(goal)
         # rospy.loginfo(f"Approaching the face #{num_faces}")
-        client.wait_for_result()
+        self.client.wait_for_result()
         rospy.loginfo("Face was approached.")
 
         # Remove aprroached face from face_to_approach
@@ -217,6 +222,7 @@ class GoalQueue:
         if poster == None:
             rospy.loginfo("This is a FACE. Let's ask questions.")    
             # SAY HELLO
+            self.persons_approached += 1
             self.sm.greet()
             # TODO
             # CONVERSATION
@@ -238,19 +244,19 @@ class GoalQueue:
         return
     
     def do_map_goal(self,my_goal):
-        client.send_goal(my_goal.goal)
+        self.client.send_goal(my_goal.goal)
 
         goal_x, goal_y = my_goal.get_goal_coordinates()
 
         rospy.loginfo(f"Sending to coordinates: x: {goal_x}, y: {goal_y}")
-        wait = client.wait_for_result()
+        wait = self.client.wait_for_result()
         if not wait:
             rospy.logerr("Action server not available!")
             rospy.signal_shutdown("Action server not available!")
         else:
-            if client.get_result():
+            if self.client.get_result():
                 rospy.loginfo(f"Reached goal {self.id_map_goal}: x: {goal_x}, y: {goal_y}")
-                goal_queue.complete_map_goal(my_goal)
+                self.complete_map_goal(my_goal)
                 self.id_map_goal += 1
                 self.rotate(1, 0.3)
             else:
@@ -382,6 +388,8 @@ class GoalQueue:
 def explore_goals(goal_queue:GoalQueue):
     while goal_queue.running:
 
+        goal_queue.check_if_everything_detected()
+
         if goal_queue.mm.face_to_approach:
             goal_queue.add_face_goal(goal_queue.mm.face_to_approach)
             goal_queue.mm.face_to_approach = None
@@ -393,7 +401,7 @@ def explore_goals(goal_queue:GoalQueue):
         elif next_goal.type == "face":
             goal_queue.do_face_goal(next_goal)
 
-        goal_queue.check_if_everything_detected()
+        
 
     return goal_queue.cylinders_to_approach
     
@@ -406,8 +414,6 @@ def explore_goals(goal_queue:GoalQueue):
 if __name__ == '__main__':
     # try:
     rospy.init_node('task1_goals', anonymous=True)
-    client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
-    client.wait_for_server()
 
     # Init map goals
     goal_points = [
@@ -418,8 +424,8 @@ if __name__ == '__main__':
 
     goal_points2 = [
         #{'x': 0, 'y': -1},
-        {'x': 1, 'y': 0},
-        {'x': 2.5, 'y': 1.3},
+        #{'x': 1, 'y': 0},
+        #{'x': 2.5, 'y': 1.3},
         {'x': 1, 'y': 2.5},
         #{'x': 0.12, 'y': -1.6},
         #{'x': 0.1, 'y': -1.5},

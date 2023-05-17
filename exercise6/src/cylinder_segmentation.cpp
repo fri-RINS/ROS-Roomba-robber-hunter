@@ -119,9 +119,9 @@ void publish_new_marker(geometry_msgs::Pose pose, double red, double green, doub
 
   marker.pose = pose;
 
-  marker.scale.x = 0.1;
-  marker.scale.y = 0.1;
-  marker.scale.z = 0.1;
+  marker.scale.x = 0.2;
+  marker.scale.y = 0.2;
+  marker.scale.z = 0.2;
 
   marker.color.r = color[0];
   marker.color.g = color[1];

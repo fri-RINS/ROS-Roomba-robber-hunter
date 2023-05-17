@@ -30,7 +30,27 @@ class ImageCompareManager():
         
         return face_embedding
 
+
     def compare_images(self, image1, image2):
+        landmarks = self.face_reidentifier(gray_image, faces[i])
+        face_descriptor = self.face_reidentifier.compute_face_descriptor(gray_image, landmarks)
+        face_descriptors.append(face_descriptor)
+
+        # Compare the descriptors of the first two faces with the third face
+        landmarks = self.face_reidentifier(gray_image, faces[2])
+        face_descriptor = self.face_reidentifier.compute_face_descriptor(gray_image, landmarks)
+
+        match_1 = dlib.face_distance(face_descriptors[0], face_descriptor) < 0.6
+        match_2 = dlib.face_distance(face_descriptors[1], face_descriptor) < 0.6
+
+        # Check if there is a match on either image
+        if match_1 or match_2:
+            rospy.loginfo("Same face detected!")
+        else:
+            rospy.loginfo("Different faces.")
+
+
+    def compare_images1(self, image1, image2):
         # Load the images
 
         # Convert images to grayscale

@@ -9,11 +9,12 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
 class Brain:
     def __init__(self):
-        self.RUNNING
+        self.RUNNING = True
+
         self.map_goals =  [
         #{'x': 0, 'y': -1},
         {'x': 1, 'y': 0},
-        {'x': 2.5, 'y': 1.3},
+        #{'x': 2.5, 'y': 1.3},
         {'x': 1, 'y': 2.5},
         #{'x': 0.12, 'y': -1.6},
         #{'x': 0.1, 'y': -1.5},
@@ -32,8 +33,6 @@ class Brain:
 if __name__ == '__main__':
     # try:
     rospy.init_node('task1_goals', anonymous=True)
-    client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
-    client.wait_for_server()
 
     brain = Brain()
 
@@ -42,7 +41,10 @@ if __name__ == '__main__':
     goal_queue.print_goals()
 
     cylinders_to_approach = explore_goals(goal_queue)
-    print("cylinders to approach", cylinders_to_approach)
+
+    print("cylinders to approach:")
+    for i, cyl in enumerate(cylinders_to_approach):
+        print(f"Cylinder {i}: color: {cyl.color}")
 
     rate = rospy.Rate(1)
         
