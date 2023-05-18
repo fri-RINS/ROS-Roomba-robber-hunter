@@ -5,7 +5,8 @@ import rospy
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from cylinder_manager import CylinderManager
-
+from move_arm import Arm_Mover
+from parking_manager import ParkingManager
 
 
 class Brain:
@@ -13,12 +14,12 @@ class Brain:
         self.RUNNING = True
 
         self.map_goals =  [
-        #{'x': 0, 'y': -1},
+        {'x': -0.5, 'y': 1},
         {'x': 2.5, 'y': -0.5},
-        {'x': 1, 'y': 0},
+        {'x': 1, 'y': 0.3},
         # {'x': 2.5, 'y': 0},
-        #{'x': 2.5, 'y': 1.3},
         {'x': 1, 'y': 2.5},
+        {'x': 2.5, 'y': 1.3},
         #{'x': 0.12, 'y': -1.6},
         #{'x': 0.1, 'y': -1.5},
         #{'x': 1.0, 'y': -1.7},
@@ -32,14 +33,18 @@ class Brain:
     # add more goals as needed
         self.gq = GoalQueue(self.map_goals,num_faces=3)
         self.cylinder_manager = None
-
+        self.am = Arm_Mover()
+        self.parking_manager = None
 
 
 if __name__ == '__main__':
     # try:
     rospy.init_node('task1_goals', anonymous=True)
 
+
     brain = Brain()
+
+    brain.am.arm_movement_pub.publish(brain.am.retract)
 
     goal_queue = brain.gq
 
@@ -55,7 +60,6 @@ if __name__ == '__main__':
     posters = goal_queue.posters
 
     for p in posters:
-        print("Poster image:",p.image)
         print("Poster prize:",p.prize)
         print("Poster color:",p.color)
 
@@ -64,20 +68,28 @@ if __name__ == '__main__':
     prison_color = wanted_poster.color
     print("Wanted prison color:", prison_color)
     
-
-    brain.cylinder_manager = CylinderManager(wanted_poster,cylinders_to_approach)
-    brain.cylinder_manager.find_prisoner()
-
-    # Ring Color --> Ring Pose
-    # TODO
-    rings = goal_queue.rings()
-
+    rings = goal_queue.rings
     print("Rings:")
     for i, ring in enumerate(rings):
         print(f"Rings {i}: color: {ring.color}")
         print(f"Rings {i}: pose: {ring.pose}")
 
+    print("STARTING CYLINDER MANAGER..")
+
+    brain.cylinder_manager = CylinderManager(wanted_poster,cylinders_to_approach)
+    brain.cylinder_manager.find_prisoner()
+
+
+    # Ring Color --> Ring Pose
+    # TODO
+
+    
     prison_ring  = [ring for ring in rings if ring.color == prison_color][0]
+    print("Prison ring:",prison_ring)
+
+    print("STARTING PARKING MANAGER..")
+
+    brain.parking_manager = ParkingManager(prison_ring.pose)
 
 
     print(f"Prison ring {prison_ring}")

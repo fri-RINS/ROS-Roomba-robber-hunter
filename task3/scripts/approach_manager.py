@@ -40,7 +40,7 @@ class ApproachManager:
         self.size_y = None
 
         self.map_reference_frame = None
-        self.start_map_updates()
+        #self.start_map_updates()
 
         # subscribe to costmap
         rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, self.map_callback)
@@ -103,7 +103,7 @@ class ApproachManager:
         # deal with map
         update_map[update_map == -1] = 127
         update_map[update_map == 0] = 255
-        update_map[update_map == 100] = 0
+        update_map[update_map == 100] = 255
         
         self.map[y:(y+size_y), x:(x+size_x)] = update_map        
 
@@ -163,27 +163,30 @@ class ApproachManager:
         # self.map = np.flip(self.map, 0)
 
         # get correct numbers
-        self.map[self.map == -1] = 127
         self.map[self.map == 0] = 255
+        self.map[self.map == -1] = 0
         self.map[self.map == 100] = 0
 
         # remember only accessible positions
         self.accessible_costmap = np.copy(self.map)
+        self.accessible_costmap = np.uint8(self.accessible_costmap)
+
         # for old map
         # self.accessible_costmap[self.accessible_costmap != 255] = 0
         #threshold_available_map_point = 50
-        threshold_available_map_point = 120
-        self.accessible_costmap[self.accessible_costmap > threshold_available_map_point] = 255
+        # threshold_available_map_point = 128
+        # self.accessible_costmap[self.accessible_costmap > threshold_available_map_point] = 255
         self.accessible_costmap[self.accessible_costmap < 255] = 0
 
-        # erode accessible_costmap to make sure we get more central reachable points
-        self.accessible_costmap = np.uint8(self.accessible_costmap)
+        #erode accessible_costmap to make sure we get more central reachable points
+
         kernel = np.ones((1,1), np.uint8)
         #kernel = np.ones((5,5), np.uint8)
         self.accessible_costmap = cv2.erode(self.accessible_costmap, kernel)
-
         cv2.imshow("ImWindow", self.accessible_costmap)
         cv2.waitKey(0)
+
+
 
     """
     Returns euclidean distance between points.

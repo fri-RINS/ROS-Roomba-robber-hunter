@@ -18,6 +18,7 @@ import cv2
 from move_arm import Arm_Mover
 from speaking_manager import SpeakingManager
 from parking_detector import ParkingDetector
+from approach_manager import ApproachManager
 
 class ParkingManager:
     def __init__(self,ring_pose: Pose):
@@ -30,6 +31,7 @@ class ParkingManager:
 
         self.arm_manager = Arm_Mover()
         self.speaking_manager = SpeakingManager()
+        self.approach_manager = ApproachManager()
         
         self.cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
@@ -50,9 +52,15 @@ class ParkingManager:
 
     
 
-    def approach_ring(self):
+    def approach_ring(self, pose):
         print("Approaching prison")
 
+        ring_pose = pose
+        x_obj = ring_pose.position.x
+        y_obj = ring_pose.position.y
+        greet_pose = self.approach_manager.get_object_greet_pose(x_obj,y_obj)
+        self.send_goal_pose(greet_pose)
+      
 
     def current_robot_pose_callback(self,data):
 
