@@ -19,6 +19,8 @@ import cv2
 from move_arm import Arm_Mover
 from speaking_manager import SpeakingManager
 
+from approach_manager import ApproachManager
+
 class CylinderManager:
     def __init__(self,wanted_poster:Poster, cylinders: list):
         self.current_robot_pose = None
@@ -31,6 +33,7 @@ class CylinderManager:
         self.cylinder_face_manager = CylinderFaceManager()
         self.arm_manager = Arm_Mover()
         self.speaking_manager = SpeakingManager()
+        self.approach_manager = ApproachManager()
         
         self.cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
@@ -59,34 +62,9 @@ class CylinderManager:
     def approach_cylinder(self, pose):
 
         cylinder_pose = pose
-        greet_point = self.calculate_greet_point(cylinder_pose, 0.5)
-        #publish_marker(greet_point)
-        target_point = cylinder_pose.position
-
-        rospy.loginfo(f"Point to greet cylinder: {greet_point}")
-
-        goal = MoveBaseGoal()
-        goal.target_pose.header.frame_id = 'map'
-        goal.target_pose.header.stamp = rospy.Time.now()
-        goal.target_pose.pose.position.x = greet_point.x
-        goal.target_pose.pose.position.y = greet_point.y
-        # goal.cylinder_pose.pose.orientation.w = 1.0
-
-        # Calculate the orientation of the goal
-        v = [target_point.x - greet_point.x, target_point.y - greet_point.y]
-        theta = atan2(v[1], v[0])
-        goal.target_pose.pose.orientation.z = math.sin(theta/2.0)
-        goal.target_pose.pose.orientation.w = math.cos(theta/2.0)
-
-        self.client.send_goal(goal)
-        self.client.wait_for_result()
-
-        if self.client.get_state() == actionlib.GoalStatus.SUCCEEDED:
-            self.move_forward()
-            rospy.loginfo("Cylinder approached.")
-
-        else:
-            rospy.logwarn("Failed to reach the cylinder.")
+        greet_pose = self.approach_manager.get_object_greet_pose(cylinder_pose)
+        self.send_goal_pose(greet_pose)
+        
 
     def extend_camera(self):
         time.sleep(0.5)
@@ -165,6 +143,33 @@ class CylinderManager:
         #self.publish_marker(new_point, color=ColorRGBA(0, 0, 1, 1))
         print("GREEEEEEEEEEEEEEET")
         return new_point
+    
+    def send_goal_pose(self, pose):
+
+        goal = MoveBaseGoal()
+        goal.target_pose.header.frame_id = "map"
+        goal.target_pose.header.stamp = rospy.Time.now()
+
+        goal.target_pose.pose.position.x = pose.position.x
+        goal.target_pose.pose.position.y = pose.position.y
+
+        goal.target_pose.pose.orientation.x = pose.orientation.x
+        goal.target_pose.pose.orientation.y = pose.orientation.y
+        goal.target_pose.pose.orientation.z = pose.orientation.z
+        goal.target_pose.pose.orientation.w = pose.orientation.w
+
+        #rospy.loginfo("Sending next goal with xpose: %s" % str(pose))
+        print("Cylinder greet position:",pose.position)
+        self.client.send_goal(goal)
+
+        wait_result = self.client.wait_for_result()
+
+        if not wait_result:
+            rospy.logerr("Not able to set goal.")
+        else:
+            res = self.client.get_state()
+            #rospy.loginfo(str(res))
+            return res
     
     def find_prisoner(self):
         
