@@ -142,10 +142,11 @@ class GoalQueue:
         print(f"FACES: {n_faces}")
         print(f"CYLINDERS: {n_cylinder}")
         print(f"RINGS: {n_rings}")
+        print(f"POSTERS: {n_posters}")
 
 
         if n_posters >= self.posters_to_detect and n_rings >= self.rings_to_detect and n_cylinder >= self.cylinders_to_detect and n_faces >= self.persons_to_approach:
-            print("Detected all rings, cylinders and and approached all faces, Running = False.")
+            print("Detected all rings, cylinders, posters and approached all faces, Running = False.")
             self.rings = self.mm.rings
             self.cylinders_to_approach = self.find_cylinders(self.cylinder_colors_to_check)
             self.running = False

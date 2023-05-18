@@ -170,10 +170,17 @@ void check_potential_cylinder(geometry_msgs::Pose pose, double red, double green
   // if the group is in certain threshold distance to another, add it to its "cluster" and calculate new average coordinates every time a point is computed -> if two cylinders are very close it detects only one?
   if (min_distance < 1.0) // m
   {
-    potential_positions_clusters[min_distance_index] += 1;
+    
     potential_positions[min_distance_index].position.x = (potential_positions[min_distance_index].position.x + pose.position.x) / 2;
     potential_positions[min_distance_index].position.y = (potential_positions[min_distance_index].position.y + pose.position.y) / 2;
     potential_positions[min_distance_index].position.z = (potential_positions[min_distance_index].position.z + pose.position.z) / 2;
+    std::cerr << "Cylinder 1231231231211231231231231231231331 z: " << potential_positions[min_distance_index].position.z << std::endl;
+    if (potential_positions[min_distance_index].position.z < 0.23)
+    {
+
+      return;
+    }
+    potential_positions_clusters[min_distance_index] += 1;
     std::cerr << "New position for group: " << min_distance_index << " [ " << potential_positions[min_distance_index].position.x << ", " << potential_positions[min_distance_index].position.y << ", " << potential_positions[min_distance_index].position.z << " ]" << std::endl;
   }
   else // if the positions are not close enough create new group
@@ -184,12 +191,7 @@ void check_potential_cylinder(geometry_msgs::Pose pose, double red, double green
     std::cerr << "New added group: " << new_ix << " [ " << potential_positions[new_ix].position.x << ", " << potential_positions[new_ix].position.y << ", " << potential_positions[new_ix].position.z << " ]" << std::endl;
   }
 
-  std::cerr << "Cylinder 1231231231211231231231231231231331 z: " << potential_positions[min_distance_index].position.z << std::endl;
-    if (potential_positions[min_distance_index].position.z < 0.23)
-    {
 
-      return;
-    }
 
   if (potential_positions_clusters[min_distance_index] == 20)
   {

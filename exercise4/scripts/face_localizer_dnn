@@ -236,7 +236,7 @@ class face_localizer:
 
         for i in range(0, face_detections.shape[2]):
             confidence = face_detections[0, 0, i, 2]
-            if confidence > 0.5:
+            if confidence > 0.7:
                 box = face_detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 box = box.astype('int')
                 x1, y1, x2, y2 = box[0], box[1], box[2], box[3]
@@ -252,7 +252,7 @@ class face_localizer:
                 face_distance = float(np.nanmean(depth_image[y1:y2, x1:x2]))
                 
                 
-                if np.isnan(face_distance) or face_distance > 1.8:
+                if np.isnan(face_distance) or face_distance > 1.5:
                     #print('Distance to face (discarded)', face_distance)
                     continue
 
