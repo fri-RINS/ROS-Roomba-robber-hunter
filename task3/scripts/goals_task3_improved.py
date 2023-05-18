@@ -79,10 +79,10 @@ class GoalQueue:
         self.running = True  # When All works is done set to False -> stop the robot
         self.init_map_goals(goal_points)
         #number of items to detect before approaching green
-        self.cylinders_to_detect = 2
+        self.cylinders_to_detect = 4
         self.rings_to_detect = 0
-        self.persons_to_approach = 1
-        self.posters_to_detect = 1
+        self.persons_to_approach = 3
+        self.posters_to_detect = 2
         self.posters = []
         self.mm = MarkerManager()
         self.sm = SpeakingManager()

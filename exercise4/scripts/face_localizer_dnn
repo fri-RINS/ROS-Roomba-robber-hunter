@@ -307,7 +307,6 @@ class face_localizer:
                         print("new marker appended")
                         #cv2.imshow("ImWindow", face_region)
                         #cv2.waitKey(1)
-                        
                         clust.show_marker = False
                         publish = True
                     if publish:

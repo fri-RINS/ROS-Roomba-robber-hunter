@@ -35,6 +35,8 @@ class ParkingManager:
         
         self.cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
+
+        self.ring_pose = ring_pose
     
     def extend_camera(self):
         time.sleep(0.5)
@@ -52,10 +54,10 @@ class ParkingManager:
 
     
 
-    def approach_ring(self, pose):
+    def approach_ring(self):
         print("Approaching prison")
 
-        ring_pose = pose
+        ring_pose = self.ring_pose
         x_obj = ring_pose.position.x
         y_obj = ring_pose.position.y
         greet_pose = self.approach_manager.get_object_greet_pose(x_obj,y_obj)
@@ -83,13 +85,44 @@ class ParkingManager:
         self.wave_arm()
         # Say goodbye
         self.speaking_manager.say_goodbye()
+
+    def send_goal_pose(self, pose):
+
+        goal = MoveBaseGoal()
+        goal.target_pose.header.frame_id = "map"
+        goal.target_pose.header.stamp = rospy.Time.now()
+
+        goal.target_pose.pose.position.x = pose.position.x
+        goal.target_pose.pose.position.y = pose.position.y
+
+        goal.target_pose.pose.orientation.x = pose.orientation.x
+        goal.target_pose.pose.orientation.y = pose.orientation.y
+        goal.target_pose.pose.orientation.z = pose.orientation.z
+        goal.target_pose.pose.orientation.w = pose.orientation.w
+
+        #rospy.loginfo("Sending next goal with xpose: %s" % str(pose))
+        print("Prison greet position:",pose.position)
+        self.client.send_goal(goal)
+
+        wait_result = self.client.wait_for_result()
+
+        if not wait_result:
+            rospy.logerr("Not able to set goal.")
+        else:
+            res = self.client.get_state()
+            #rospy.loginfo(str(res))
+            return res
         
 
 def main():
     rospy.init_node('parking_manager_node', anonymous=True)
     time.sleep(2)
     rate = rospy.Rate(2)
-    pm = ParkingManager(None)
+    pose = Pose()
+    pose.position = Point(-0.39657391875860526, 1.548204318206858, 0.29720198054705815)
+    pm = ParkingManager(pose)
+    print(pm.ring_pose)
+    pm.park()
     
 
 

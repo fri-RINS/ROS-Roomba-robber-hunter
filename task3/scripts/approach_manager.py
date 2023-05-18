@@ -44,7 +44,7 @@ class ApproachManager:
 
         # subscribe to costmap
         rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, self.map_callback)
-        #rospy.sleep(2)
+        rospy.sleep(2)
 
         # for updates
         # currently not working
@@ -255,6 +255,9 @@ class ApproachManager:
     WARNING: do not use!
     """
     def world_to_map_coords_simple(self, x, y):
+        print(f"X:{x}")
+        print(f"Y:{y}")
+        print(self.map_transform.transform.translation.x)
         c_x = round((x - self.map_transform.transform.translation.x) / self.map_resolution)
         c_y = round((y - self.map_transform.transform.translation.y) / self.map_resolution)
         return (c_x, c_y)

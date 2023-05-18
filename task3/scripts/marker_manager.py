@@ -112,6 +112,8 @@ class MarkerManager:
             self.ring_colors.append(ring_color)
 
             ring = Ring(latest_ring_color,latest_ring_pose)
+            print("New ring added:")
+            print(f"Ring color: {ring.color} Ring pose: {ring.pose}")
             self.rings.append(ring)
 
 

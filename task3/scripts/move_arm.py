@@ -74,7 +74,7 @@ if __name__ == "__main__":
     rospy.init_node('arm_mover', anonymous=True)
     am = Arm_Mover()
     time.sleep(.5)
-    am.arm_movement_pub.publish(am.extend)
+    am.arm_movement_pub.publish(am.retract)
     print('Extend arm!')
     
     r = rospy.Rate(10)
