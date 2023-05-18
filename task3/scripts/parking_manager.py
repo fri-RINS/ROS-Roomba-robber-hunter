@@ -17,13 +17,7 @@ from geometry_msgs.msg import Twist
 import cv2
 from move_arm import Arm_Mover
 from speaking_manager import SpeakingManager
-
-# Approach prison ring
-# Extend arm
-# Rotate robot until parking found with ParkingDetector
-# Park the robot
-# Wave manipulator
-# Say goodbye
+from parking_detector import ParkingDetector
 
 class ParkingManager:
     def __init__(self,ring_pose: Pose):
@@ -40,25 +34,55 @@ class ParkingManager:
         self.cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
     
-    def move_forward(self):
-        twist_msg = Twist()
-        twist_msg.linear.x = 0.2
-        self.cmd_vel_pub.publish(twist_msg)
-        rospy.sleep(1)
-        twist_msg.linear.x = 0.0
-        self.cmd_vel_pub.publish(twist_msg)  
+    def extend_camera(self):
+        time.sleep(0.5)
+        self.arm_manager.arm_movement_pub.publish(self.arm_manager.extend)
+        #time.sleep(5)
+
+    def wave_arm(self):
+        time.sleep(0.5)
+        self.arm_manager.arm_movement_pub.publish(self.arm_manager.wave)
+        time.sleep(2)
+        
+
+    def send_park_goal(self, park_goal):
+        print("Parking the robot...")
+
+    
+
+    def approach_ring(self):
+        print("Approaching prison")
+
 
     def current_robot_pose_callback(self,data):
 
         self.current_robot_pose = data.pose.pose
         # print(current_robot_pose)
     
-    
+    def park(self):
+        # Approach prison ring
+        self.approach_ring()
+        # Extend arm
+        self.extend_camera()
+        # Rotate robot until parking found with ParkingDetector
+        park_detector = ParkingDetector()
+        park_goal = park_detector.find_rough_parking()
+        # Rough parking
+        self.send_park_goal(park_goal)
+        # Fine parking
+        park_detector.fine_parking()
+        # Wave manipulator
+        self.wave_arm()
+        # Say goodbye
+        self.speaking_manager.say_goodbye()
+        
 
 def main():
     rospy.init_node('parking_manager_node', anonymous=True)
     time.sleep(2)
     rate = rospy.Rate(2)
+    pm = ParkingManager(None)
+    
 
 
 

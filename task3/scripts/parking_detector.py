@@ -14,10 +14,9 @@ from std_msgs.msg import ColorRGBA
 import math
 import time
 from std_msgs.msg import String
+from geometry_msgs.msg import Twist
 
 
-can_start = False
-start_park_detection_sub = None
 
 class ParkingDetector:
     def __init__(self):
@@ -30,23 +29,18 @@ class ParkingDetector:
 
         # Marker array object used for visualizations
         self.marker_array = MarkerArray()
-        self.marker_num = 1
+        self.marker_num = 3
 
         self.object_num_threshold = 1
         #self.object_proximity_threshold = 0.5
         self.object_proximity_threshold = 0.3
         # only detect object if distance to it smaller than
-        # best for accurate positioning:
-        # self.max_detection_distance = 2.0
-        #self.max_detection_distance = 10.0
-        self.max_detection_distance = 1.9
 
         # poses of potential objects (1 pose per group)
         self.potential_object_poses = []
         # number of votes for pose at i-th position in self.potential_object_poses
         self.potential_object_votes = []
-        # tuples (xr, yr, rr_x, rr_y, rr_z, rr_w) where the robot was and how it was rotated when potential face at i-th position in self.potential_object_poses was detected
-        self.robot_at_detection_coords = []
+   
 
         # False if object pose ton yet sent
         self.potencial_objects_already_sent = []
@@ -57,31 +51,26 @@ class ParkingDetector:
         # images of objects at corresponding positions
         self.object_images = []
 
-        # number of published objects
-        self.number_of_published_objects = 0
-        self.num_all_objects = 10
-        self.found_all_objects = False
+        self.parking_found = False
 
         # for publishing face markers on map
         self.marker_array = MarkerArray()
         self.marker_num = 1
         self.markers_pub = rospy.Publisher('parking_markers', MarkerArray, queue_size=1000)
 
-        # Subscribe to the image and/or depth topic
-        self.image_sub = rospy.Subscriber("/arm_camera/rgb/image_raw", Image, self.image_callback)
-        # self.depth_sub = rospy.Subscriber("/camera/depth_registered/image_raw", Image, self.depth_callback)
-
-
         # Object we use for transforming between coordinate frames
         self.tf_buf = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buf)
+
+        self.cmd_vel_pub = rospy.Publisher(
+        '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
 
     def dist_euclidean(self,x1, y1, x2, y2):
         #rospy.loginfo("Distance called with: (%s, %s, %s, %s)" % (str(x1), str(y1), str(x2), str(y2)))
         return math.sqrt((x1 - x2) **2 + (y1 - y2)**2)
 
 
-    def publish_pose(self, pose, marker_color):
+    def publish_marker(self, pose):
         # Create a marker used for visualization
         self.marker_num += 1
         marker = Marker()
@@ -95,36 +84,16 @@ class ParkingDetector:
         marker.lifetime = rospy.Duration.from_sec(500)
         marker.id = self.marker_num
         marker.scale = Vector3(0.1, 0.1, 0.1)
-        #marker.color = ColorRGBA(0, 1, 0, 1)
-        marker.color = marker_color
+        marker.color = ColorRGBA(0, 0, 0, 1)
         self.marker_array.markers.append(marker)
-
         self.markers_pub.publish(self.marker_array)
 
-    def publish_unique_object(self, object_pose, robot_detection_pose):
-        print("Publishing new unique object")
-        self.publish_pose(object_pose, ColorRGBA(0,0,0,1))
+        rospy.loginfo("New parking marker appended.")
 
-        # self.publish_greet_instructions(object_pose, robot_detection_pose, object_color)
+        
 
-        # increase the number of objects
-        self.number_of_published_objects = self.number_of_published_objects + 1
-
-        # stop execution if all objects are found
-        if self.number_of_published_objects >= self.num_all_objects:
-            rospy.loginfo("Exiting face search.")
-            #sys.exit(0)
-            #exit()
-            self.found_all_objects = True
-
-    def new_potential_object_pose(self, object_image, object_pose, robot_pose=None):
-        """
-        TODO: currently robot_pose set to None for easier testing
-        Goes through all already detected object positions and votes for the one that is closer than
-        some threshold. Otherwise it creates a new cell and votes for it.
-
-        It immediately publishes when enough detections are collected for certain object.
-        """
+    def new_potential_parking_pose(self, object_image, object_pose):
+        
         #rospy.loginfo("New potential object: (%s, %s)" % (str(object_pose.position.x), str(object_pose.position.y)))
 
         print(str(self.potential_object_votes))
@@ -137,7 +106,6 @@ class ParkingDetector:
                 voting_weight = self.potential_object_votes[i]
 
                 self.potential_object_votes[i] = self.potential_object_votes[i] + 1
-                self.robot_at_detection_coords[i] = robot_pose
 
                 # use weighted average to compute updated object position
                 self.potential_object_poses[i].position.x = (voting_weight * self.potential_object_poses[i].position.x + object_pose.position.x) / (voting_weight + 1)
@@ -146,52 +114,22 @@ class ParkingDetector:
 
                 closest_not_found = False
 
-                
-
-
                 # we send the face immediately when enough detections are noted
                 if (self.potential_object_votes[i] >= self.object_num_threshold) and (not self.potencial_objects_already_sent[i]):
-                    self.publish_unique_object(self.potential_object_poses[i], self.robot_at_detection_coords[i])
                     self.potencial_objects_already_sent[i] = True
+                    self.parking_pose = self.potential_object_poses[i]
+                    self.parking_found = True
+                    return
 
         # if no stored pose is close enough add new position
         if closest_not_found:
             #rospy.loginfo("Closest not found.")
             self.potential_object_poses.append(object_pose)
             self.potential_object_votes.append(1)
-            self.robot_at_detection_coords.append(robot_pose)
             self.potencial_objects_already_sent.append(False)
 
             #for color
             self.object_images.append(object_image)
-
-            """
-            # get image color
-            successful_service_call = False
-            
-            ###
-            try:
-                #img = self.bridge.cv2_to_imgmsg(object_image, encoding="passthrough")
-                img = self.bridge.cv2_to_imgmsg(object_image, encoding="bgr8")
-            except CvBridgeError as e:
-                print(e)
-
-            
-            rospy.wait_for_service('detect_color')
-            try:
-                color_srv = rospy.ServiceProxy('detect_color', ColorSrv)
-                resp_raw = color_srv(img)
-                resp = resp_raw.color
-                successful_service_call = True
-            except rospy.ServiceException as e:
-                print('Service call failed.')
-            ###
-
-            if successful_service_call:
-                self.object_colors.append(resp)
-            else:
-                self.object_colors.append("unknown")
-            """
 
             # write image to disk
             #cv2.imwrite("ring_" + str(len(self.potential_object_poses)) + ".jpg", object_image)
@@ -210,14 +148,6 @@ class ParkingDetector:
 
         # Get the angles in the base_link relative coordinate system
         x,y = dist*np.cos(angle_to_target), dist*np.sin(angle_to_target)
-
-        ### Define a stamped message for transformation - directly in "base_frame"
-        #point_s = PointStamped()
-        #point_s.point.x = x
-        #point_s.point.y = y
-        #point_s.point.z = 0.3
-        #point_s.header.frame_id = "base_link"
-        #point_s.header.stamp = rospy.Time(0)
 
         # Define a stamped message for transformation - in the "camera rgb frame"
         point_s = PointStamped()
@@ -239,13 +169,27 @@ class ParkingDetector:
         return pose
 
 
-    def image_callback(self,data):
-        print('I got a new image!')
+    def check_image(self):
+        print('I got a new potential parking image!')
+
+        # Get the next rgb and depth images that are posted from the camera
+        try:
+
+            rgb_image_message = rospy.wait_for_message(
+                "/arm_camera/rgb/image_raw", Image)
+
+        except Exception as e:
+            print(e)
+            return 0
+
+
+        # Convert the images into a OpenCV (numpy) format
 
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+            cv_image = self.bridge.imgmsg_to_cv2(rgb_image_message, "bgr8")
         except CvBridgeError as e:
             print(e)
+
 
         # Set the dimensions of the image
         self.dims = cv_image.shape
@@ -290,7 +234,7 @@ class ParkingDetector:
                 if dist < 5:
                     candidates.append((e1,e2))
 
-        print("Processing is done! found", len(candidates), "candidates for rings")
+        print("Processing is done! found", len(candidates), "candidates for parking")
 
         try:
             depth_img = rospy.wait_for_message('/arm_camera/depth/image_raw', Image)
@@ -344,31 +288,63 @@ class ParkingDetector:
 		       #print("pose is not NONE")
                 # correctly deal with new potential ring
                 object_image = cv_image[x_min_outer:x_max_outer, y_min_outer:y_max_outer]
-                self.new_potential_object_pose(object_image, pose, robot_pose=None)
+                self.new_potential_parking_pose(object_image, pose)
 
 
 
-    def depth_callback(self,data):
+    # def depth_callback(self,data):
 
-        try:
-            depth_image = self.bridge.imgmsg_to_cv2(data, "16UC1")
-        except CvBridgeError as e:
-            print(e)
+    #     try:
+    #         depth_image = self.bridge.imgmsg_to_cv2(data, "16UC1")
+    #     except CvBridgeError as e:
+    #         print(e)
 
-        # Do the necessairy conversion so we can visuzalize it in OpenCV
-        image_1 = depth_image / 65536.0 * 255
-        image_1 =image_1/np.max(image_1)*255
+    #     # Do the necessairy conversion so we can visuzalize it in OpenCV
+    #     image_1 = depth_image / 65536.0 * 255
+    #     image_1 =image_1/np.max(image_1)*255
 
-        image_viz = np.array(image_1, dtype= np.uint8)
+    #     image_viz = np.array(image_1, dtype= np.uint8)
 
-        cv2.imshow("Depth window", image_viz)
-        cv2.waitKey(1)
+    #     cv2.imshow("Depth window", image_viz)
+    #     cv2.waitKey(1)
 
+    def rotate(self):
+        
+        twist = Twist()
+        twist.angular.z = 1.0  # Adjust angular velocity as needed
+
+        self.cmd_vel_pub.publish(twist)
+
+    def stop_rotating(self):
+        twist = Twist()
+        twist.angular.z = 0.0  # Adjust angular velocity as needed
+
+        self.cmd_vel_pub.publish(twist)
+
+    def find_rough_parking(self):
+        print("Find rough parking...")
+        rate = rospy.Rate(10)
+
+        # Rotate and check image for parking until parking found
+        while not self.parking_found:
+            self.rotate()
+            self.check_image()
+            rate.sleep()
+
+        self.stop_rotating()
+        self.publish_marker(self.parking_pose)
+
+        return self.parking_pose
+
+
+    def fine_parking(self):
+        print("Fine parking...")
 
 def main():
 
     rospy.init_node('parking_detector_node', anonymous=True)
-    rate = rospy.Rate(1)
+    pd = ParkingDetector()
+    parking_pose = pd.find_rough_parking()
 
 
 if __name__ == '__main__':

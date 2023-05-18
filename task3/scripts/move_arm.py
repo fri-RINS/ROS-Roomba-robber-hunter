@@ -37,6 +37,17 @@ class Arm_Mover():
         self.find_face.joint_names = ["arm_shoulder_pan_joint", "arm_shoulder_lift_joint", "arm_elbow_flex_joint", "arm_wrist_flex_joint"]
         self.find_face.points = [JointTrajectoryPoint(positions=[0,0.3,1,-0.5],
                                                     time_from_start = rospy.Duration(1))]
+        
+        self.wave = JointTrajectory()
+        self.wave.joint_names = ["arm_shoulder_pan_joint", "arm_shoulder_lift_joint", "arm_elbow_flex_joint", "arm_wrist_flex_joint"]
+        self.wave.points = [
+            JointTrajectoryPoint(positions=[0, 0.3, 1, 0],
+                                 time_from_start=rospy.Duration(1)),
+            JointTrajectoryPoint(positions=[0, 0.3, 1, -0.5],
+                                 time_from_start=rospy.Duration(2)),
+            JointTrajectoryPoint(positions=[0, 0.3, 1, 0],
+                                 time_from_start=rospy.Duration(3))
+        ]
 
     def new_user_command(self, data):
         self.user_command = data.data.strip()
@@ -63,8 +74,8 @@ if __name__ == "__main__":
     rospy.init_node('arm_mover', anonymous=True)
     am = Arm_Mover()
     time.sleep(.5)
-    am.arm_movement_pub.publish(am.retract)
-    print('Retracted arm!')
+    am.arm_movement_pub.publish(am.extend)
+    print('Extend arm!')
     
     r = rospy.Rate(10)
     while not rospy.is_shutdown():
