@@ -40,9 +40,11 @@ class ApproachManager:
         self.size_y = None
 
         self.map_reference_frame = None
+        self.start_map_updates()
 
         # subscribe to costmap
         rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, self.map_callback)
+        #rospy.sleep(2)
 
         # for updates
         # currently not working
@@ -68,6 +70,8 @@ class ApproachManager:
         Return indices of nonzero element closest to point (x,y) in array a
         """
         r,c = np.nonzero(a)
+        print("R:",r)
+        print("C:",c)
         min_idx = ((r - y)**2 + (c - x)**2).argmin()
         return c[min_idx], r[min_idx]
 
@@ -92,6 +96,7 @@ class ApproachManager:
         y = map_update.y
         size_x = map_update.width
         size_y = map_update.height
+        
         update_map = np.array(map_update.data).reshape((size_y, size_x))
         
 
@@ -109,18 +114,16 @@ class ApproachManager:
         # for old map
         # self.accessible_costmap[self.accessible_costmap != 255] = 0
         #threshold_available_map_point = 50
-        threshold_available_map_point = 60
+        threshold_available_map_point = 100
         self.accessible_costmap[self.accessible_costmap > threshold_available_map_point] = 0
         self.accessible_costmap[self.accessible_costmap > 0] = 255
 
         # erode accessible_costmap to make sure we get more central reachable points
         self.accessible_costmap = np.uint8(self.accessible_costmap)
-        kernel = np.ones((3,3), np.uint8)
+        kernel = np.ones((5,5), np.uint8)
         #kernel = np.ones((5,5), np.uint8)
         self.accessible_costmap = cv2.erode(self.accessible_costmap, kernel)
 
-        #plt.imshow(self.map, interpolation='nearest')
-        #plt.show()
 
         
 
@@ -164,25 +167,23 @@ class ApproachManager:
         self.map[self.map == 0] = 255
         self.map[self.map == 100] = 0
 
-        #plt.imshow(self.map, interpolation='nearest')
-        #plt.show()
-        #rospy.loginfo(str(self.map_transform))
-
         # remember only accessible positions
         self.accessible_costmap = np.copy(self.map)
-
         # for old map
         # self.accessible_costmap[self.accessible_costmap != 255] = 0
         #threshold_available_map_point = 50
-        threshold_available_map_point = 60
-        self.accessible_costmap[self.accessible_costmap > threshold_available_map_point] = 0
-        self.accessible_costmap[self.accessible_costmap > 0] = 255
+        threshold_available_map_point = 120
+        self.accessible_costmap[self.accessible_costmap > threshold_available_map_point] = 255
+        self.accessible_costmap[self.accessible_costmap < 255] = 0
 
         # erode accessible_costmap to make sure we get more central reachable points
         self.accessible_costmap = np.uint8(self.accessible_costmap)
-        kernel = np.ones((3,3), np.uint8)
+        kernel = np.ones((1,1), np.uint8)
         #kernel = np.ones((5,5), np.uint8)
         self.accessible_costmap = cv2.erode(self.accessible_costmap, kernel)
+
+        cv2.imshow("ImWindow", self.accessible_costmap)
+        cv2.waitKey(0)
 
     """
     Returns euclidean distance between points.

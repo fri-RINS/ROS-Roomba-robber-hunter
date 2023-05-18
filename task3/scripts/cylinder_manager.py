@@ -62,7 +62,9 @@ class CylinderManager:
     def approach_cylinder(self, pose):
 
         cylinder_pose = pose
-        greet_pose = self.approach_manager.get_object_greet_pose(cylinder_pose)
+        x_obj = cylinder_pose.position.x
+        y_obj = cylinder_pose.position.y
+        greet_pose = self.approach_manager.get_object_greet_pose(x_obj,y_obj)
         self.send_goal_pose(greet_pose)
         
 
