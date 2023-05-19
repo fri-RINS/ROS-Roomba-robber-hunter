@@ -65,7 +65,7 @@ class CylinderManager:
         x_obj = cylinder_pose.position.x
         y_obj = cylinder_pose.position.y
         greet_pose = self.approach_manager.get_object_greet_pose(x_obj,y_obj)
-        self.send_goal_pose(greet_pose)
+        self.approach_manager.send_goal_pose(greet_pose)
         
 
     def extend_camera(self):
@@ -77,101 +77,6 @@ class CylinderManager:
         time.sleep(0.5)
         self.arm_manager.arm_movement_pub.publish(self.arm_manager.retract)
         time.sleep(5)
-
-    def calculate_greet_point(self,cylinder_pose, safe_distance):
-        current_point = self.current_robot_pose.position
-
-        # print(current_point)
-
-        target_point = cylinder_pose.position
-
-        # # Calculate the distance between the current point and the se point
-        # dx = target_point.x - current_point.x
-        # dy = target_point.y - current_point.y
-        # dz = target_point.z - current_point.z
-        # distance = math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
-
-        # # Calculate the unit vector from the current point to the target point
-        # if distance == 0:
-        #     rospy.logerr("Target point is the same as the current point")
-        #     return None
-        # unit_vector = Point(dx / distance, dy / distance, dz / distance)
-
-        # # Calculate the point that is 0.3m closer to the current point
-        # new_distance = distance - safe_distance
-        # new_point = Point(current_point.x + new_distance * unit_vector.x,
-        #                   current_point.y + new_distance * unit_vector.y,
-        #                   current_point.z + new_distance * unit_vector.z)
-        point2 = target_point
-        slope = (point2.y - current_point.y) / (point2.x - current_point.x)
-        y_intercept = point2.y - slope * point2.x
-
-        if slope == 0:
-            # Line is parallel to the x-axis
-            nearest_point = Point()
-            nearest_point.x = y_intercept
-            nearest_point.y = current_point.y
-        elif abs(slope) == float('inf'):
-            # Line is parallel to the y-axis
-            nearest_point = Point()
-            nearest_point.x = current_point.x
-            nearest_point.y = y_intercept
-        else:
-            # Line is neither parallel to the x-axis nor the y-axis
-            x = (current_point.y - y_intercept) / slope
-            y = slope * current_point.x + y_intercept
-            nearest_point = Point()
-            nearest_point.x = x
-            nearest_point.y = y
-        
-        # Calculate the distance between the current point and the se point
-        dx = target_point.x - nearest_point.x
-        dy = target_point.y - nearest_point.y
-        dz = target_point.z - nearest_point.z
-        distance = math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
-
-        # Calculate the unit vector from the current point to the target point
-        if distance == 0:
-            rospy.logerr("Target point is the same as the current point")
-            return None
-        unit_vector = Point(dx / distance, dy / distance, dz / distance)
-
-        # Calculate the point that is 0.3m closer to the current point
-        new_distance = distance - safe_distance
-        new_point = Point(nearest_point.x + new_distance * unit_vector.x,
-                        nearest_point.y + new_distance * unit_vector.y,
-                        nearest_point.z + new_distance * unit_vector.z)
-
-        #self.publish_marker(new_point, color=ColorRGBA(0, 0, 1, 1))
-        print("GREEEEEEEEEEEEEEET")
-        return new_point
-    
-    def send_goal_pose(self, pose):
-
-        goal = MoveBaseGoal()
-        goal.target_pose.header.frame_id = "map"
-        goal.target_pose.header.stamp = rospy.Time.now()
-
-        goal.target_pose.pose.position.x = pose.position.x
-        goal.target_pose.pose.position.y = pose.position.y
-
-        goal.target_pose.pose.orientation.x = pose.orientation.x
-        goal.target_pose.pose.orientation.y = pose.orientation.y
-        goal.target_pose.pose.orientation.z = pose.orientation.z
-        goal.target_pose.pose.orientation.w = pose.orientation.w
-
-        #rospy.loginfo("Sending next goal with xpose: %s" % str(pose))
-        print("Cylinder greet position:",pose.position)
-        self.client.send_goal(goal)
-
-        wait_result = self.client.wait_for_result()
-
-        if not wait_result:
-            rospy.logerr("Not able to set goal.")
-        else:
-            res = self.client.get_state()
-            #rospy.loginfo(str(res))
-            return res
     
     def find_prisoner(self):
         

@@ -52,8 +52,8 @@ void downsample_pcl_voxel(const pcl::PCLPointCloud2ConstPtr &cloud_blob,
 
 std::vector<double> get_color(double red, double green, double blue){
 	  double r = 255;
-    double g = 255;
-    double b = 255;
+    double g = 165;
+    double b = 0;
     double a = 1;
 
   if (red > green && red > blue){

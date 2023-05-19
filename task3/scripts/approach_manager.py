@@ -7,6 +7,8 @@ import rospy
 import cv2
 import numpy as np
 import math
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from actionlib import SimpleActionClient
 
 # for map loading
 from nav_msgs.msg import OccupancyGrid
@@ -38,6 +40,8 @@ class ApproachManager:
 
         self.size_x = None
         self.size_y = None
+        self.client = SimpleActionClient('move_base', MoveBaseAction)
+        self.client.wait_for_server()
 
         self.map_reference_frame = None
         #self.start_map_updates()
@@ -194,6 +198,33 @@ class ApproachManager:
     def dist_euclidean(self, x1, y1, x2, y2):
         #rospy.loginfo("Distance called with: (%s, %s, %s, %s)" % (str(x1), str(y1), str(x2), str(y2)))
         return math.sqrt((x1 - x2) **2 + (y1 - y2)**2)
+    
+    def send_goal_pose(self, pose):
+
+        goal = MoveBaseGoal()
+        goal.target_pose.header.frame_id = "map"
+        goal.target_pose.header.stamp = rospy.Time.now()
+
+        goal.target_pose.pose.position.x = pose.position.x
+        goal.target_pose.pose.position.y = pose.position.y
+
+        goal.target_pose.pose.orientation.x = pose.orientation.x
+        goal.target_pose.pose.orientation.y = pose.orientation.y
+        goal.target_pose.pose.orientation.z = pose.orientation.z
+        goal.target_pose.pose.orientation.w = pose.orientation.w
+
+        #rospy.loginfo("Sending next goal with xpose: %s" % str(pose))
+        print("Prison greet position:",pose.position)
+        self.client.send_goal(goal)
+
+        wait_result = self.client.wait_for_result()
+
+        if not wait_result:
+            rospy.logerr("Not able to set goal.")
+        else:
+            res = self.client.get_state()
+            #rospy.loginfo(str(res))
+            return res
 
     """
     Retruns true, if x and y indices represent a cell in map array, false otherwise.

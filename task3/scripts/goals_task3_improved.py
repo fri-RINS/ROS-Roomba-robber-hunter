@@ -31,6 +31,7 @@ from poster_manager import Poster
 from conversation_manager import ConversationManager
 from marker_manager import MarkerManager
 from speaking_manager import SpeakingManager
+from approach_manager import ApproachManager
 
 
 
@@ -68,7 +69,7 @@ class MyGoal:
 
 
 class GoalQueue:
-    def __init__(self, goal_points, num_faces):
+    def __init__(self, goal_points, num_faces=0,num_posters=0,num_rings=0,num_cylinders=0):
 
         self.map_goals = []
         self.face_goals = []
@@ -79,13 +80,14 @@ class GoalQueue:
         self.running = True  # When All works is done set to False -> stop the robot
         self.init_map_goals(goal_points)
         #number of items to detect before approaching green
-        self.cylinders_to_detect = 4
-        self.rings_to_detect = 0
-        self.persons_to_approach = 3
-        self.posters_to_detect = 2
+        self.cylinders_to_detect = num_cylinders
+        self.rings_to_detect = num_rings
+        self.persons_to_approach = num_faces
+        self.posters_to_detect = num_posters
         self.posters = []
         self.mm = MarkerManager()
         self.sm = SpeakingManager()
+        self.am = ApproachManager()
         self.id_map_goal = 0
         self.current_robot_pose = None
         self.cylinder_colors_to_check = None
@@ -161,28 +163,26 @@ class GoalQueue:
         return cylinders_to_visit
 
 
-        
+    def approach_face(self,goal):
+        print("Approaching face")
+
+        face_pose = goal.target_pose.pose
+        x_obj = face_pose.position.x
+        y_obj = face_pose.position.y
+        greet_pose = self.am.get_object_greet_pose(x_obj,y_obj)
+        self.am.send_goal_pose(greet_pose)
+        self.mm.face_to_approach = None   
 
     def add_face_goal(self, target_pose):
         # Calculate greet point
-        greet_point = self.calculate_greet_point(target_pose, 0.5)
-        #publish_marker(greet_point)
-        target_point = target_pose.position
-
-        rospy.loginfo(f"Point to greet face: {greet_point}")
 
         goal = MoveBaseGoal()
         goal.target_pose.header.frame_id = 'map'
         goal.target_pose.header.stamp = rospy.Time.now()
-        goal.target_pose.pose.position.x = greet_point.x
-        goal.target_pose.pose.position.y = greet_point.y
+        goal.target_pose.pose = target_pose
         # goal.target_pose.pose.orientation.w = 1.0
 
         # Calculate the orientation of the goal
-        v = [target_point.x - greet_point.x, target_point.y - greet_point.y]
-        theta = atan2(v[1], v[0])
-        goal.target_pose.pose.orientation.z = math.sin(theta/2.0)
-        goal.target_pose.pose.orientation.w = math.cos(theta/2.0)
 
         my_face_goal = MyGoal(goal, "face", None, target_pose)
         self.face_goals.append(my_face_goal)
@@ -199,16 +199,6 @@ class GoalQueue:
         if len(self.completed_face_goals) == self.num_faces:
             rospy.loginfo("All faces greeted.")
     
-    def approach_face(self,goal):
-
-        # Send the goal to the move_base action server
-        self.client.send_goal(goal)
-        # rospy.loginfo(f"Approaching the face #{num_faces}")
-        self.client.wait_for_result()
-        rospy.loginfo("Face was approached.")
-
-        # Remove aprroached face from face_to_approach
-        self.mm.face_to_approach = None
 
     def do_face_goal(self,my_goal):
 
