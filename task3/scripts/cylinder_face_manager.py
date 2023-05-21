@@ -137,8 +137,8 @@ class CylinderFaceManager:
                     face_region = rgb_image[y1:y2, x1:x2]
 
                     # Visualize the extracted face
-                    # cv2.imshow("ImWindow", face_region)
-                    # cv2.waitKey(0)
+                    cv2.imshow("ImWindow", face_region)
+                    cv2.waitKey(0)
                     #cv2.imwrite("src/hw3/task3/img_test/image_cyl_whole.jpg", rgb_image)
 
                     self.face_found = True

@@ -90,8 +90,8 @@ def main():
     rospy.init_node('parking_manager_node', anonymous=True)
     time.sleep(2)
     rate = rospy.Rate(2)
-    pose = Pose()
-    pose.position = Point(-0.39657391875860526, 1.548204318206858, 0.29720198054705815)
+    pose = Pose() #39657391875860526
+    pose.position = Point(-0.4, 1.548204318206858, 0.29720198054705815)
     pm = ParkingManager(pose)
     print(pm.ring_pose)
     pm.park()

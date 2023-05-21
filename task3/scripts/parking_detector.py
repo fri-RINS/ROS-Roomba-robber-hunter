@@ -15,41 +15,28 @@ import math
 import time
 from std_msgs.msg import String
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseWithCovarianceStamped
 
 
 
 class ParkingDetector:
     def __init__(self):
-
-        # An object we use for converting images between ROS format and OpenCV format
-        self.bridge = CvBridge()
-
-        # A help variable for holding the dimensions of the image
-        self.dims = (0, 0, 0)
+        self.bridge = CvBridge()    # An object we use for converting images between ROS format and OpenCV format
+        self.dims = (0, 0, 0)       # A help variable for holding the dimensions of the image
+        
 
         # Marker array object used for visualizations
         self.marker_array = MarkerArray()
         self.marker_num = 3
 
         self.object_num_threshold = 1
-        #self.object_proximity_threshold = 0.5
-        self.object_proximity_threshold = 0.3
-        # only detect object if distance to it smaller than
+        self.object_proximity_threshold = 0.3    # only detect object if distance to it smaller than
 
-        # poses of potential objects (1 pose per group)
-        self.potential_object_poses = []
-        # number of votes for pose at i-th position in self.potential_object_poses
-        self.potential_object_votes = []
-   
-
-        # False if object pose ton yet sent
-        self.potencial_objects_already_sent = []
-
-        # to store colors of objects at corresponding positions
-        self.object_colors = []
-
-        # images of objects at corresponding positions
-        self.object_images = []
+        self.potential_object_poses = []         # poses of potential objects (1 pose per group)
+        self.potential_object_votes = []         # number of votes for pose at i-th position in self.potential_object_poses
+        self.potencial_objects_already_sent = [] # False if object pose ton yet sent
+        self.object_colors = []                  # to store colors of objects at corresponding positions
+        self.object_images = []                  # images of objects at corresponding positions
 
         self.parking_found = False
 
@@ -64,9 +51,12 @@ class ParkingDetector:
 
         self.cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
+        self.odom_sub = rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, self.current_robot_pose_callback)
+
+    def current_robot_pose_callback(self,data):
+        self.current_robot_pose = data.pose.pose
 
     def dist_euclidean(self,x1, y1, x2, y2):
-        #rospy.loginfo("Distance called with: (%s, %s, %s, %s)" % (str(x1), str(y1), str(x2), str(y2)))
         return math.sqrt((x1 - x2) **2 + (y1 - y2)**2)
 
 
@@ -77,7 +67,6 @@ class ParkingDetector:
         marker.header.stamp = rospy.Time(0)
         marker.header.frame_id = 'map'
         marker.pose = pose
-        #marker.type = Marker.CUBE
         marker.type = Marker.SPHERE
         marker.action = Marker.ADD
         marker.frame_locked = False
@@ -157,6 +146,8 @@ class ParkingDetector:
         point_s.header.frame_id = "arm_camera_rgb_optical_frame"
         point_s.header.stamp = rospy.Time(0)
 
+        rate = rospy.Rate(1)
+        rate.sleep()
         # Get the point in the "map" coordinate system
         point_world = self.tf_buf.transform(point_s, "map")
 
@@ -168,6 +159,61 @@ class ParkingDetector:
 
         return pose
 
+    def get_elipse(self, cv_image) -> tuple:
+        self.dims = cv_image.shape
+        cv_image = cv_image[:440,:] # remove the bottom part of the image so the robot is not in the way
+        gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+        _, thresh1 = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY_INV)
+        edged = cv2.Canny(thresh1, 50, 150)
+        
+        contours, hierarchy = cv2.findContours(edged, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        #cv2.drawContours(cv_image, contours, -1, (255, 0, 0), 3)
+        #cv2.imshow("Contour window",cv_image)
+        #cv2.waitKey(1)
+
+        elps = []
+        for cnt in contours:
+            #     print cnt
+            #     print cnt.shape
+            if cnt.shape[0] >= 20:
+                ellipse = cv2.fitEllipse(cnt)
+                elps.append(ellipse)
+            # Find two elipses with same centers
+            candidates = []
+            for n in range(len(elps)):
+                for m in range(n + 1, len(elps)):
+                    e1 = elps[n]
+                    e2 = elps[m]
+                    dist = np.sqrt(((e1[0][0] - e2[0][0]) ** 2 + (e1[0][1] - e2[0][1]) ** 2))
+                    #print(dist)
+                    #if dist < 5:
+                    #    candidates.append((e1,e2))
+                    candidates.append((e1,e2))
+
+                
+        center2size = {}
+        for e1, e2 in candidates:
+            size = round((e1[1][0]+e1[1][1])/2)
+            center = (round(e1[0][1]), round(e1[0][0]))
+
+            if center2size.get(center) == None:
+                center2size[center] = [size]
+            else:
+                center2size.get(center).append(size)
+                
+        rings = [cv_image[
+             max(obj[0] - np.max(center2size.get(obj)) // 2, 0):
+             min(obj[0] + np.max(center2size.get(obj)) // 2, cv_image.shape[0]),
+             max(obj[1] - np.max(center2size.get(obj)) // 2, 0):
+             min(obj[1] + np.max(center2size.get(obj)) // 2, cv_image.shape[1])]
+         for obj in center2size]
+
+        if len(rings) == 0:
+            return None
+
+        x_avg, y_avg = np.mean(list(center2size.keys()), axis=0)
+
+        return x_avg, y_avg
 
     def check_image(self):
         print('I got a new potential parking image!')
@@ -209,9 +255,9 @@ class ParkingDetector:
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
         # Example how to draw the contours, only for visualization purposes
-        cv2.drawContours(img, contours, -1, (255, 0, 0), 3)
-        # cv2.imshow("Contour window",img)
-        # cv2.waitKey(1)
+        #cv2.drawContours(img, contours, -1, (255, 0, 0), 3)
+        #cv2.imshow("Contour window",img)
+        #cv2.waitKey(1)
 
         # Fit elipses to all extracted contours
         elps = []
@@ -285,7 +331,7 @@ class ParkingDetector:
 
             if pose is not None:
                 #self.publish_pose(pose)
-		       #print("pose is not NONE")
+		        #print("pose is not NONE")
                 # correctly deal with new potential ring
                 object_image = cv_image[x_min_outer:x_max_outer, y_min_outer:y_max_outer]
                 self.new_potential_parking_pose(object_image, pose)
@@ -311,7 +357,7 @@ class ParkingDetector:
     def rotate(self):
         
         twist = Twist()
-        twist.angular.z = 1.0  # Adjust angular velocity as needed
+        twist.angular.z = 0.7  # Adjust angular velocity as needed
 
         self.cmd_vel_pub.publish(twist)
 
@@ -325,26 +371,78 @@ class ParkingDetector:
         print("Find rough parking...")
         rate = rospy.Rate(10)
 
+        twist = Twist()
+        twist.linear.x = -0.5  # Adjust angular velocity as needed
+        for _ in range(6):
+            self.cmd_vel_pub.publish(twist)
+            rate.sleep()
+        twist.linear.x = 0.0  # Adjust angular velocity as needed
+        self.cmd_vel_pub.publish(twist)
         # Rotate and check image for parking until parking found
         while not self.parking_found:
             self.rotate()
             self.check_image()
-            rate.sleep()
+            rate.sleep()        
+
+
 
         self.stop_rotating()
         self.publish_marker(self.parking_pose)
-
+        print("Found parking pose:", self.parking_pose)
         return self.parking_pose
-
 
     def fine_parking(self):
         print("Fine parking...")
+        print("potential object poses:", self.potential_object_poses)
+        print("current robot pose:", self.current_robot_pose)
+
+        point_s = PointStamped()
+        """
+        try:
+            self.arm_mover.publish(self.extend)
+            print('camera ready')
+        except Exception as e:
+            print(e)
+        """
+
+        rospy.sleep(1.0)
+
+        cond = True
+        while cond:
+            try:
+                rgb_img = rospy.wait_for_message('/arm_camera/rgb/image_raw', Image)
+                point_s.header.frame_id = "arm_camera_rgb_optical_frame"
+                point_s.header.stamp = rgb_img.header.stamp
+            except Exception as e:
+                print(e)
+
+            try:
+                cv_image = self.bridge.imgmsg_to_cv2(rgb_img, "bgr8")
+            except CvBridgeError as e:
+                print(e)
+
+            x_avg, y_avg = self.get_elipse(cv_image)
+            print(x_avg, y_avg)
+            msg = Twist()
+            if 300 < y_avg < 380:
+                msg.angular.z = 0
+                msg.linear.x = 0.1
+                if x_avg > 525:
+                    cond = False
+            elif y_avg > 380:
+                msg.angular.z = -0.3
+            elif y_avg < 300:
+                msg.angular.z = 0.3
+
+            self.cmd_vel_pub.publish(msg)
 
 def main():
 
     rospy.init_node('parking_detector_node', anonymous=True)
     pd = ParkingDetector()
     parking_pose = pd.find_rough_parking()
+    #pd.publish_marker(parking_pose)
+    pd.fine_parking()
 
 
 if __name__ == '__main__':

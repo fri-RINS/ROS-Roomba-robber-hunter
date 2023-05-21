@@ -573,7 +573,6 @@ class ApproachManager:
         # convert to world coordinates and return res
         return self.map_to_world_coords(res_point[0], res_point[1])
 
-    
     def quaternion_from_points(self, x1, y1, x2, y2):
         """
         Returns quaternion representing rotation so that the 
