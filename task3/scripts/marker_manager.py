@@ -96,7 +96,7 @@ class MarkerManager:
         face_y = latest_marker_pose.position.y
         face_z = latest_marker_pose.position.z
 
-        rospy.loginfo(f"Face to approach: x: {face_x}, y: {face_y}, z: {face_z}")
+        #rospy.loginfo(f"Face to approach: x: {face_x}, y: {face_y}, z: {face_z}")
         self.face_to_approach = latest_marker_pose
 
 
@@ -112,8 +112,8 @@ class MarkerManager:
             self.ring_colors.append(ring_color)
 
             ring = Ring(latest_ring_color,latest_ring_pose)
-            print("New ring added:")
-            print(f"Ring color: {ring.color} Ring pose: {ring.pose}")
+            # print("New ring added:")
+            # print(f"Ring color: {ring.color} Ring pose: {ring.pose}")
             self.rings.append(ring)
 
 

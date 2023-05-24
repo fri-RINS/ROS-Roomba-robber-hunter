@@ -191,9 +191,11 @@ class PosterDetector:
                 poster.is_poster = True
                 if potential_poster.color != "unknown":
                     poster.color = potential_poster.color
+                if potential_poster.prize != -1:
+                    poster.prize = potential_poster.prize
                 
         if poster.is_poster == True:
-            print(f"This is a POSTER. Color: {poster.color}")
+            print(f"This is a POSTER. Color: {poster.color} Prize:{poster.prize}")
             self.publish_marker(self.pose)
             print("new poster marker appended")
             return poster
@@ -209,7 +211,7 @@ class PosterDetector:
         marker.type = Marker.CUBE
         marker.action = Marker.ADD
         marker.frame_locked = False
-        marker.lifetime = rospy.Duration.from_sec(300)
+        marker.lifetime = rospy.Duration()
         marker.id = self.marker_num
         marker.color = ColorRGBA(1, 1, 1, 1)
         marker.scale = Vector3(0.2, 0.2, 0.2)

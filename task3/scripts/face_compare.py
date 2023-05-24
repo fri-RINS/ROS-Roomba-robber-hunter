@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #coding=utf-8
 # The contents of this file are in the public domain. See LICENSE_FOR_EXAMPLE_PROGRAMS.txt
 #
@@ -66,13 +66,13 @@ if len(sys.argv) != 6:
     exit()
 """
 
-predictor_path = '/home/kuznerjaka/catkin_ws/src/hw3/task3/img_test/shape_predictor_5_face_landmarks.dat'
-face_rec_model_path = '/home/kuznerjaka/catkin_ws/src/hw3/task3/img_test/dlib_face_recognition_resnet_model_v1.dat'
+predictor_path = 'src/hw3/task3/img_test/shape_predictor_5_face_landmarks.dat'
+face_rec_model_path = 'src/hw3/task3/img_test/dlib_face_recognition_resnet_model_v1.dat'
 image_path1 = '../img_test/image_cylinder.jpg'
 image_path2 = '../img_test/image2.jpg'
 
 class ImageCompareManager():
-    print(os.getcwd())
+    #print(os.getcwd())
     def __init__(self):
         self.detector = dlib.get_frontal_face_detector()
         self.sp = dlib.shape_predictor(predictor_path)
@@ -101,10 +101,10 @@ class ImageCompareManager():
 
         # Concatenate the resized images horizontally
         hmerge = np.hstack((img1_resized, img2_resized))
-        cv2.putText(hmerge, "confident = " + str(1-val), (10,10), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
+        #cv2.putText(hmerge, "confident = " + str(1-val), (10,10), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
         cv2.imshow("result", hmerge)
         #cv2.imshow("test2", vmerge)
-        cv2.imwrite(sys.argv[5] ,hmerge)
+        #cv2.imwrite(sys.argv[5] ,hmerge)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -113,10 +113,13 @@ class ImageCompareManager():
     
     def compare_faces(self, image1, image2) -> bool:
         confidence = self.calc_confidence(image1, image2)
-        print("Confidence that the images are the same:", confidence)
         if confidence > 0.4:
+            print("Faces are the same:", confidence)
+
             return True
         else:
+            print("Faces are different:", confidence)
+
             return False
 
 def euclidean_dist(vector_x, vector_y):

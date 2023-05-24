@@ -70,6 +70,26 @@ class Arm_Mover():
                 return(-1)
             self.send_command = False
 
+    def extend_to_face(self):
+        time.sleep(0.5)
+        self.arm_movement_pub.publish(self.find_face)
+        time.sleep(5)
+
+    def retract_camera(self):
+        time.sleep(0.5)
+        self.arm_movement_pub.publish(self.retract)
+        time.sleep(5)
+
+    def extend_to_park(self):
+        time.sleep(0.5)
+        self.arm_movement_pub.publish(self.extend)
+        time.sleep(5)
+
+    def wave_camera(self):
+        time.sleep(0.5)
+        self.arm_movement_pub.publish(self.wave)
+        time.sleep(5)
+
 if __name__ == "__main__":
     rospy.init_node('arm_mover', anonymous=True)
     am = Arm_Mover()

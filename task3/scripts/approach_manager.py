@@ -142,14 +142,14 @@ class ApproachManager:
         self.size_x = size_x
         self.size_y = size_y
 
-        rospy.loginfo("Map size: x: %s, y: %s." % (str(size_x), str(size_y)))
+        #rospy.loginfo("Map size: x: %s, y: %s." % (str(size_x), str(size_y)))
 
         if size_x < 3 or size_y < 3:
             rospy.loginfo("Map size only: x: %s, y: %s. NOT running map to image conversion." % (str(size_x), str(size_y)))
             return
         
         self.map_resolution = map_data.info.resolution
-        rospy.loginfo("Map resolution: %s" % str(self.map_resolution))
+        #rospy.loginfo("Map resolution: %s" % str(self.map_resolution))
 
         self.map_reference_frame = map_data.header.frame_id
 
@@ -187,8 +187,8 @@ class ApproachManager:
         kernel = np.ones((1,1), np.uint8)
         #kernel = np.ones((5,5), np.uint8)
         self.accessible_costmap = cv2.erode(self.accessible_costmap, kernel)
-        cv2.imshow("ImWindow", self.accessible_costmap)
-        cv2.waitKey(0)
+        # cv2.imshow("ImWindow", self.accessible_costmap)
+        # cv2.waitKey(0)
 
 
 
@@ -214,7 +214,6 @@ class ApproachManager:
         goal.target_pose.pose.orientation.w = pose.orientation.w
 
         #rospy.loginfo("Sending next goal with xpose: %s" % str(pose))
-        print("Prison greet position:",pose.position)
         self.client.send_goal(goal)
 
         wait_result = self.client.wait_for_result()
@@ -286,9 +285,9 @@ class ApproachManager:
     WARNING: do not use!
     """
     def world_to_map_coords_simple(self, x, y):
-        print(f"X:{x}")
-        print(f"Y:{y}")
-        print(self.map_transform.transform.translation.x)
+        # print(f"X:{x}")
+        # print(f"Y:{y}")
+        #print(self.map_transform.transform.translation.x)
         c_x = round((x - self.map_transform.transform.translation.x) / self.map_resolution)
         c_y = round((y - self.map_transform.transform.translation.y) / self.map_resolution)
         return (c_x, c_y)
@@ -406,7 +405,7 @@ class ApproachManager:
         k_perp = -1.0 / k
         n = y_ce - k_perp * x_ce
         
-        print("k: " + str(k) + " n: " + str(n) + " x_start: " + str(x_ce))
+        #print("k: " + str(k) + " n: " + str(n) + " x_start: " + str(x_ce))
         # TODO: remove problems with lines perpendicular to x axis (problems because of numeric representation)
         # parameter
         #d = 7
@@ -419,8 +418,8 @@ class ApproachManager:
 
         #candidates = list(bresenham(x_ce, y_ce, cnd_tmp[len(cnd_tmp)-1][0], cnd_tmp[len(cnd_tmp)-1][1]))
         candidates = list(bresenham(x_start, y_start, x_finish, y_finish))
-        print("Candidates for:")
-        print(candidates)
+        # print("Candidates for:")
+        # print(candidates)
 
         #return candidates
 
@@ -432,8 +431,8 @@ class ApproachManager:
             if (self.in_map_bounds(c, r) and self.can_move_to(c, r)):
                 candidates_reachable.append(candidate)
 
-        print("Candidates reachable:")
-        print(candidates_reachable)
+        # print("Candidates reachable:")
+        # print(candidates_reachable)
 
         return candidates_reachable
 
@@ -470,8 +469,8 @@ class ApproachManager:
 
         #candidates = list(bresenham(x_ce, y_ce, cnd_tmp[len(cnd_tmp)-1][0], cnd_tmp[len(cnd_tmp)-1][1]))
         candidates = list(bresenham(x_start, y_start, x_finish, y_finish))
-        print("Candidates for:")
-        print(candidates)
+        # print("Candidates for:")
+        # print(candidates)
 
         #candidates.reverse()
 
@@ -487,19 +486,19 @@ class ApproachManager:
                 # if using central as start
                 break
 
-        print("Candidates reachable:")
-        print(candidates_reachable)
+        # print("Candidates reachable:")
+        # print(candidates_reachable)
 
         if len(candidates_reachable) == 0:
             # in case no candidates are on valid positions
-            print("Searching for backup candidates")
+            #print("Searching for backup candidates")
             backup_candidate = candidates[3]
             x = backup_candidate[0]
             y = backup_candidate[1]
 
             x_close, y_close = self.nearest_nonzero_to_point(self.accessible_costmap, x, y)
             candidates_reachable.append((x_close, y_close))
-            print(candidates_reachable)
+            #print(candidates_reachable)
 
 
         return candidates_reachable
@@ -519,7 +518,7 @@ class ApproachManager:
         (x_c, y_c) = self.world_to_map_coords(x_c, y_c)
         (x_r, y_r) = self.world_to_map_coords(x_r, y_r)
 
-        rospy.loginfo("Robot converted to map coordinates: (%s, %s)" % (str(x_r), str(y_r)))
+        #rospy.loginfo("Robot converted to map coordinates: (%s, %s)" % (str(x_r), str(y_r)))
 
         candidates = self.get_face_greet_location_candidates_perpendicular(x_c, y_c, fpose_left, fpose_right)
 
@@ -555,7 +554,7 @@ class ApproachManager:
         (x_c, y_c) = self.world_to_map_coords(x_c, y_c)
         (x_r, y_r) = self.world_to_map_coords(x_r, y_r)
 
-        rospy.loginfo("Robot converted to map coordinates: (%s, %s)" % (str(x_r), str(y_r)))
+        #rospy.loginfo("Robot converted to map coordinates: (%s, %s)" % (str(x_r), str(y_r)))
 
         candidates = self.get_face_greet_location_candidates(x_c, y_c)
 

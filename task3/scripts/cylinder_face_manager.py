@@ -22,16 +22,16 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from PIL import Image as PILImage
 import re
-from compare_image_manager import ImageCompareManager
+from face_compare import ImageCompareManager
 from geometry_msgs.msg import Twist
-
+from move_arm import Arm_Mover
 class CylinderFaceManager:
     def __init__(self):
         
 
         # An object we use for converting images between ROS format and OpenCV format
         self.bridge = CvBridge()
-
+        self.am = Arm_Mover()
         # The function for performin HOG face detection
         # self.face_detector = dlib.get_frontal_face_detector()
         protoPath = join(dirname(__file__), "deploy.prototxt.txt")
@@ -149,6 +149,7 @@ def main():
     rospy.init_node('cylinder_face_manager', anonymous=True)
     time.sleep(2)
     cylinder_face_manager = CylinderFaceManager()
+    cylinder_face_manager.am.extend_to_face()
     rate = rospy.Rate(2)
     face_region = None
     while face_region is None:
@@ -156,12 +157,12 @@ def main():
         rate.sleep()
     #print(face_region)
 
-    cylinder_face_manager.retract_camera()
+    cylinder_face_manager.am.retract_camera()
     
 
-    icm = ImageCompareManager(face_region)
-    icm.compare_images(face_region, icm.poster_image1)
-    icm.compare_images(face_region, icm.poster_image2)
+    icm = ImageCompareManager()
+    icm.compare_faces(face_region, icm.poster_image1)
+    icm.compare_faces(face_region, icm.poster_image2)
 
     cv2.imshow("ImWindow", face_region)
     cv2.waitKey(0)

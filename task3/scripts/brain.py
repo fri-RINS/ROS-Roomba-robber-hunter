@@ -31,17 +31,32 @@ class Brain:
         {'x': 0, 'y': -1},
         {'x': 0.15, 'y': -1.2},
         {'x': 1, 'y': -1.2},
-        {'x': 3, 'y': -0.6},
+        {'x': 3.5, 'y': -0.6},
+        {'x': 2.3, 'y': 0.5},
         {'x': 2.15, 'y': 0.95},
         {'x': 1, 'y': 0.2},
         {'x': 2, 'y': 2.4},
-        {'x': 0.35, 'y': 2.4},
+        {'x': 1, 'y': 2.6},
         {'x': -1.4, 'y': 1.7},
         {'x': -0.65, 'y': 0.15},
         {'x': 0, 'y': 0},
     ]
+        self.dummy =  [
+        # {'x': -1.0, 'y': 0},
+        # {'x': 0, 'y': -1},
+        # {'x': 0.15, 'y': -1.2},
+        # {'x': 1, 'y': -1.2},
+        {'x': 3, 'y': -0.6},
+        # {'x': 2.15, 'y': 0.95},
+        # {'x': 1, 'y': 0.2},
+        # {'x': 2, 'y': 2.4},
+        # {'x': 0.35, 'y': 2.4},
+        # {'x': -1.4, 'y': 1.7},
+        # {'x': -0.65, 'y': 0.15},
+        # {'x': 0, 'y': 0},
+    ]
     # add more goals as needed
-        self.gq = GoalQueue(self.whole_map_goals,num_faces=3,num_posters=2,num_rings=4,num_cylinders=4)
+        self.gq = GoalQueue(self.whole_map_goals,num_faces=2,num_posters=2,num_rings=4,num_cylinders=4)
         self.cylinder_manager = None
         self.am = Arm_Mover()
         self.parking_manager = None
@@ -54,7 +69,7 @@ if __name__ == '__main__':
 
     brain = Brain()
     #retract arm at the start
-    brain.am.arm_movement_pub.publish(brain.am.retract)
+    brain.am.retract_camera()
 
     goal_queue = brain.gq
 
@@ -106,6 +121,7 @@ if __name__ == '__main__':
     #TODO
     #Park the robot in the circle, using ParkingDetector()!!
     brain.parking_manager = ParkingManager(prison_ring.pose)
+    brain.parking_manager.park()
 
     print("ROBOT HAS PARKED, GOODBYE!")
 
