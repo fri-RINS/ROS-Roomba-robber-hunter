@@ -137,15 +137,21 @@ class CylinderFaceManager:
                     face_region = rgb_image[y1:y2, x1:x2]
 
                     # Visualize the extracted face
-                    cv2.imshow("ImWindow", face_region)
-                    cv2.waitKey(0)
-                    cv2.destroyAllWindows()
+                    print(face_region)
                     #cv2.imwrite("src/hw3/task3/img_test/image_cyl_whole.jpg", rgb_image)
 
-                    self.face_found = True
-                    face_region = cv2.cvtColor(face_region, cv2.COLOR_RGB2BGR)
-
-                    return face_region  
+                    if face_region.shape[1] > 0 and face_region.shape[0]>0:
+                        print((face_region.shape))
+                        cv2.imshow("ImWindow", face_region)
+                        cv2.waitKey(0)
+                        cv2.destroyAllWindows()
+                        self.face_found = True
+                        face_region = cv2.cvtColor(face_region, cv2.COLOR_BGR2RGB)
+                        face_region = cv2.cvtColor(face_region, cv2.COLOR_RGB2BGR)
+                        return face_region  
+                    else:
+                        self.face_found = True
+                        return None
 
 def main():
     rospy.init_node('cylinder_face_manager', anonymous=True)
@@ -163,7 +169,7 @@ def main():
     
 
     icm = ImageCompareManager()
-    image_path1 = 'src/hw3/task3/img_test/image_cylinder.jpg'
+    image_path1 = 'src/hw3/task3/img_test/image1.jpg'
     image_path2 = 'src/hw3/task3/img_test/image2.jpg'
     image1 = cv2.imread(image_path1)
     image2 = cv2.imread(image_path2)

@@ -108,7 +108,7 @@ if __name__ == '__main__':
     print("STARTING CYLINDER MANAGER..")
 
 
-    brain.cylinder_manager = CylinderManager(wanted_poster,cylinders_to_approach,am=brain.am)
+    brain.cylinder_manager = CylinderManager(wanted_poster,cylinders_to_approach,am=brain.gq.am)
     #cylinder approach works
     #TODO
     #image comparison!!
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     #Parking manager ring approach works
     #TODO
     #Park the robot in the circle, using ParkingDetector()!!
-    brain.parking_manager = ParkingManager(prison_ring.pose)
+    brain.parking_manager = ParkingManager(prison_ring.pose, am=brain.gq.am)
     brain.parking_manager.park()
 
     print("ROBOT HAS PARKED, GOODBYE!")

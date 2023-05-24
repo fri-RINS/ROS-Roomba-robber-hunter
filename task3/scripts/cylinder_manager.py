@@ -41,7 +41,7 @@ class CylinderManager:
         self.safe_distance = 0.3
         rospy.sleep(2)
 
-        self.poster = wanted_poster
+        self.wanted_poster = wanted_poster
         self.cylinders = cylinders
         self.icm = ImageCompareManager()
 
@@ -55,6 +55,31 @@ class CylinderManager:
         rospy.sleep(1)
         twist_msg.linear.x = 0.0
         self.cmd_vel_pub.publish(twist_msg)  
+
+    def move_back(self):
+        twist_msg = Twist()
+        twist_msg.linear.x = -0.1
+        self.cmd_vel_pub.publish(twist_msg)
+        rospy.sleep(1)
+        twist_msg.linear.x = 0.0
+        self.cmd_vel_pub.publish(twist_msg)  
+
+    def rotate_right(self):
+        twist_msg = Twist()
+        twist_msg.angular.z = -0.1
+        self.cmd_vel_pub.publish(twist_msg)
+        rospy.sleep(1)
+        twist_msg.angular.z = 0.0
+        self.cmd_vel_pub.publish(twist_msg)  
+
+    def rotate_left(self):
+        twist_msg = Twist()
+        twist_msg.angular.z = 0.2
+        self.cmd_vel_pub.publish(twist_msg)
+        rospy.sleep(1)
+        twist_msg.angular.z = 0.0
+        self.cmd_vel_pub.publish(twist_msg)  
+
 
     def current_robot_pose_callback(self,data):
 
@@ -93,7 +118,21 @@ class CylinderManager:
             rospy.loginfo("Extending camera.")
             self.extend_camera()
 
-            face_image = self.cylinder_face_manager.find_faces()
+            face_image = self.cylinder_face_manager.find_faces() 
+            while face_image is None:
+                self.rotate_left()
+                face_image = self.cylinder_face_manager.find_faces()
+            # if face_image is None:
+            #     self.rotate_left()
+            #     face_image = self.cylinder_face_manager.find_faces()
+            # if face_image is None:
+            #     self.rotate_right()
+
+            #     face_image = self.cylinder_face_manager.find_faces()
+            # if face_image is None:
+            #     self.move_back()
+
+            #     face_image = self.cylinder_face_manager.find_faces()
 
             # cv2.imshow("ImWindow", face_image)
             # cv2.waitKey(0)
@@ -118,7 +157,7 @@ def main():
     rospy.init_node('cylinder_manager_node', anonymous=True)
     #time.sleep(2)
     rate = rospy.Rate(2)
-    image_path1 = 'src/hw3/task3/img_test/img_test/image2.jpg'
+    image_path1 = '/home/team_predictive_pirates/ROS/src/hw3/task3/img_test/image2.jpg'
 
     poster_image = cv2.imread(image_path1)
     poster = Poster("blue", poster_image, 100, True)
@@ -134,7 +173,7 @@ def main():
     pose.position.z = 0.2870562880963201
     cyl2 = Cylinder("yellow", pose)
     am = ApproachManager()
-    cm = CylinderManager(poster, [cyl,cyl2],am=am)
+    cm = CylinderManager(poster, [cyl2,cyl],am=am)
     rospy.loginfo("Finding the prisoner.")
     cm.find_prisoner()
 

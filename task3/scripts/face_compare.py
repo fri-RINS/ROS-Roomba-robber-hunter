@@ -96,8 +96,9 @@ class ImageCompareManager():
 
         confidence = 1 - np.linalg.norm(np.array(face_descriptor1) - np.array(face_descriptor2))
         height = min(img1.shape[0], img2.shape[0])  # Choose the minimum height
-        img1_resized = cv2.resize(img1, (img1.shape[1], height))
-        img2_resized = cv2.resize(img2, (img2.shape[1], height))
+        width = min(img1.shape[1], img2.shape[1])
+        img1_resized = cv2.resize(img1, (width, height))
+        img2_resized = cv2.resize(img2, (width, height))
 
         # Concatenate the resized images horizontally
         hmerge = np.hstack((img1_resized, img2_resized))

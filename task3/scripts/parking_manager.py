@@ -21,7 +21,7 @@ from parking_detector import ParkingDetector
 from approach_manager import ApproachManager
 
 class ParkingManager:
-    def __init__(self,ring_pose: Pose):
+    def __init__(self,ring_pose: Pose, am=None):
         self.current_robot_pose = None
         self.odom_sub = rospy.Subscriber(
         '/amcl_pose', PoseWithCovarianceStamped, self.current_robot_pose_callback)
@@ -31,7 +31,7 @@ class ParkingManager:
 
         self.arm_manager = Arm_Mover()
         self.speaking_manager = SpeakingManager()
-        self.approach_manager = ApproachManager()
+        self.approach_manager = am
         
         self.cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
@@ -92,7 +92,7 @@ def main():
     rate = rospy.Rate(2)
     pose = Pose() #39657391875860526
     pose.position = Point(-0.4, 1.548204318206858, 0.29720198054705815)
-    pm = ParkingManager(pose)
+    pm = ParkingManager(pose, ApproachManager())
     print(pm.ring_pose)
     pm.park()
     
