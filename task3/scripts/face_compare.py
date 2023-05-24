@@ -68,8 +68,8 @@ if len(sys.argv) != 6:
 
 predictor_path = 'src/hw3/task3/img_test/shape_predictor_5_face_landmarks.dat'
 face_rec_model_path = 'src/hw3/task3/img_test/dlib_face_recognition_resnet_model_v1.dat'
-image_path1 = '../img_test/image_cylinder.jpg'
-image_path2 = '../img_test/image2.jpg'
+image_path1 = 'src/hw3/task3/img_test/image_cylinder.jpg'
+image_path2 = 'src/hw3/task3/img_test/image2.jpg'
 
 class ImageCompareManager():
     #print(os.getcwd())
@@ -129,8 +129,9 @@ def euclidean_dist(vector_x, vector_y):
 
 def main():
     icm = ImageCompareManager()
-    
-    confidence = icm.calc_confidence(image_path1, image_path2)
+    image1 = cv2.imread(image_path1)
+    image2 = cv2.imread(image_path2)
+    confidence = icm.compare_faces(image1, image2)
     print("Confidence:", confidence)
  
 if __name__ == '__main__':

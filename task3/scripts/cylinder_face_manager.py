@@ -139,9 +139,11 @@ class CylinderFaceManager:
                     # Visualize the extracted face
                     cv2.imshow("ImWindow", face_region)
                     cv2.waitKey(0)
+                    cv2.destroyAllWindows()
                     #cv2.imwrite("src/hw3/task3/img_test/image_cyl_whole.jpg", rgb_image)
 
                     self.face_found = True
+                    face_region = cv2.cvtColor(face_region, cv2.COLOR_RGB2BGR)
 
                     return face_region  
 
@@ -161,12 +163,17 @@ def main():
     
 
     icm = ImageCompareManager()
-    icm.compare_faces(face_region, icm.poster_image1)
-    icm.compare_faces(face_region, icm.poster_image2)
+    image_path1 = 'src/hw3/task3/img_test/image_cylinder.jpg'
+    image_path2 = 'src/hw3/task3/img_test/image2.jpg'
+    image1 = cv2.imread(image_path1)
+    image2 = cv2.imread(image_path2)
 
-    cv2.imshow("ImWindow", face_region)
-    cv2.waitKey(0)
-    rospy.sleep(10)
+    icm.compare_faces(face_region, image1)
+    icm.compare_faces(face_region, image2)
+
+    # cv2.imshow("ImWindow", face_region)
+    # cv2.waitKey(0)
+    # rospy.sleep(10)
 
     #cv2.destroyAllWindows()
 
