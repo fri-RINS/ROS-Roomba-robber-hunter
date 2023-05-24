@@ -23,6 +23,8 @@ import re
 from task3.msg import PosterMessage
 from std_msgs.msg import String
 import pytesseract
+import pyocr
+from PIL import Image as PILimage
 
 can_detect = False
 poster = None
@@ -82,56 +84,60 @@ class PosterDetector:
 
         return np.sqrt((point1.x - point2[0])**2 + (point1.y - point2[1])**2 + (point1.z - point2[2])**2)
 
+    def preprocess_image(self, image):
+    # Apply image preprocessing techniques (resize, denoise, contrast enhancement, etc.)
+    # Return the preprocessed image
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+        # Apply image preprocessing techniques (e.g., resizing, denoising, contrast enhancement)
+        # Here are some examples:
+        
+        # Resize the image to a specific width and height
+        resized = cv2.resize(gray, (1200, 1000))
+        
+        # Apply Gaussian blur to reduce noise
+        blurred = cv2.GaussianBlur(resized, (5, 5), 0)
+        
+        # Apply adaptive thresholding to enhance contrast
+        thresholded = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 11, 4)
+        
+        # Apply morphological operations to remove noise and improve digit connectivity
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4, 2))
+        opening = cv2.morphologyEx(thresholded, cv2.MORPH_OPEN, kernel, iterations=1)
+    
+        # Return the preprocessed image
+        return opening
 
+
+    def perform_ocr(self, image):
+        # Perform OCR on the image using pytesseract
+        ocr_text = pytesseract.image_to_string(image, lang='eng')
+
+        return ocr_text
+        
     def img_to_text(self, image):
-        img = image
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
- 
-        # Performing OTSU threshold
-        ret, thresh1 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
-        
-        # Specify structure shape and kernel size.
-        # Kernel size increases or decreases the area
-        # of the rectangle to be detected.
-        # A smaller value like (10, 10) will detect
-        # each word instead of a sentence.
-        rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (18, 18))
-        
-        # Applying dilation on the threshold image
-        dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
-        
-        # Finding contours
-        contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL,
-                                                        cv2.CHAIN_APPROX_NONE)
-        
-        # Creating a copy of image
-        im2 = img.copy()
-        
-        # A text file is created and flushed
-        poster_text = ""
-        
-        # Looping through the identified contours
-        # Then rectangular part is cropped and passed on
-        # to pytesseract for extracting text from it
-        # Extracted text is then written into the text file
-        # for cnt in contours:
-        #     x, y, w, h = cv2.boundingRect(cnt)
-            
-        #     # Drawing a rectangle on copied image
-        #     rect = cv2.rectangle(im2, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            
-        #     # Cropping the text block for giving input to OCR
-        #     cropped = im2[y:y + h, x:x + w]
-            
-        # Apply OCR on the cropped image
-        text = pytesseract.image_to_string(im2)
-        
-        # Appending the text into file
-        poster_text += text
-        #print(poster_text)
+        # preprocessed_image = self.preprocess_image(image)
+        # cv2.imshow("ImWindow", preprocessed_image)
+        # cv2.waitKey(0)
 
-        # cv2.imshow("ImWindow", im2)
-        # cv2.waitKey(1)
+        # # Perform OCR on the image or ROI
+        # text = self.perform_ocr(preprocessed_image)
+        # print("OCR1", text)
+
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        cv2.imshow("ImWindow", gray)
+        cv2.waitKey(0)
+        # Initialize OCR engine
+        ocr_tool = pyocr.get_available_tools()[0]  # Use the first available OCR engine
+        ocr_lang = 'eng'  # Specify the language for OCR
+        # Convert the grayscale image to RGB PIL image
+        pil_image = PILimage.fromarray(gray)
+
+        # Perform OCR on the image
+        text = ocr_tool.image_to_string(pil_image, lang=ocr_lang)
+
+        print(text)
+
 
         return text
 
@@ -168,8 +174,11 @@ class PosterDetector:
             match = re.search(r'\d+', text)
 
             if match:
-                number = int(match.group()) * 1000
-                poster_prize = number
+                number = int(match.group())
+                if number < 1000 and number > 0:
+                    poster_prize = number * 1000
+                elif number > 0:
+                    poster_prize = number
                 #print("Prize:", number)
             else:
                 #print("No number found in text.")
@@ -184,7 +193,7 @@ class PosterDetector:
 
     def find_poster(self):
         poster = Poster(None, None, None, False)
-        for i in range(3):
+        for i in range(1):
             potential_poster = self.detect_poster()
             if potential_poster != None:
                 poster.image = potential_poster.image
@@ -279,7 +288,8 @@ class PosterDetector:
                 # distances = np.array([])
 
                 rgb_image_no_face = np.copy(rgb_image)
-                rgb_image_no_face[y1:y2, x1:x2] = 0
+                rgb_image_no_face[y1:y2, :] = 255
+                
                 potential_poster = self.check_poster(rgb_image_no_face, face_region, self.pose)
                 
                 
