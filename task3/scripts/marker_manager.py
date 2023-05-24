@@ -107,14 +107,13 @@ class MarkerManager:
 
         ring_color = self.get_color_from_rgba(latest_ring_color)
 
-        if ring_color not in self.ring_colors:
-            self.sm.say_ring_color(ring_color)
-            self.ring_colors.append(ring_color)
+        self.sm.say_ring_color(ring_color)
+        self.ring_colors.append(ring_color)
 
-            ring = Ring(latest_ring_color,latest_ring_pose)
-            # print("New ring added:")
-            # print(f"Ring color: {ring.color} Ring pose: {ring.pose}")
-            self.rings.append(ring)
+        ring = Ring(latest_ring_color,latest_ring_pose)
+        # print("New ring added:")
+        # print(f"Ring color: {ring.color} Ring pose: {ring.pose}")
+        self.rings.append(ring)
 
 
     def parking_marker_callback(self,data):
@@ -129,10 +128,8 @@ class MarkerManager:
         latest_cylinder_color = latest_cylinder.color
 
         cylinder_color = self.get_color_from_rgba(latest_cylinder_color)
+        self.sm.say_cylinder_color(cylinder_color)
+        self.cylinder_colors.append(cylinder_color)
 
-        if cylinder_color not in self.cylinder_colors:
-            self.sm.say_cylinder_color(cylinder_color)
-            self.cylinder_colors.append(cylinder_color)
-
-            cylinder = Cylinder(cylinder_color,latest_cylinder_pose)
-            self.cylinders.append(cylinder)
+        cylinder = Cylinder(cylinder_color,latest_cylinder_pose)
+        self.cylinders.append(cylinder)

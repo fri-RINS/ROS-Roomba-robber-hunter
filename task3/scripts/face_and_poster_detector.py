@@ -370,7 +370,7 @@ class face_localizer:
                         marker.type = Marker.CUBE
                         marker.action = Marker.ADD
                         marker.frame_locked = False
-                        marker.lifetime = rospy.Duration.from_sec(300)
+                        marker.lifetime = rospy.Duration()
                         marker.id = self.marker_num
                         marker.scale = Vector3(0.1, 0.1, 0.1)
                         marker.color = ColorRGBA(0, 1, 0, 1)

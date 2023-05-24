@@ -29,19 +29,23 @@ from map_msgs.msg import OccupancyGridUpdate
 from bresenham import bresenham
 
 from tf.transformations import quaternion_from_euler
+from visualization_msgs.msg import Marker, MarkerArray
+from std_msgs.msg import ColorRGBA
 
 class ApproachManager:
-    def __init__(self):
+    def __init__(self,mr=None):
         # for storing a map
         self.map = None
         # for storing correct transformation
         self.map_transform = TransformStamped()
-        self.map_resolution = None
+        self.map_resolution = mr
 
         self.size_x = None
         self.size_y = None
         self.client = SimpleActionClient('move_base', MoveBaseAction)
         self.client.wait_for_server()
+        self.greet_point_markers_pub = rospy.Publisher('greet_point_markers', MarkerArray, queue_size=1000)
+        self.greet_point_markers_array = MarkerArray()
 
         self.map_reference_frame = None
         #self.start_map_updates()
@@ -74,8 +78,8 @@ class ApproachManager:
         Return indices of nonzero element closest to point (x,y) in array a
         """
         r,c = np.nonzero(a)
-        print("R:",r)
-        print("C:",c)
+        # print("R:",r)
+        # print("C:",c)
         min_idx = ((r - y)**2 + (c - x)**2).argmin()
         return c[min_idx], r[min_idx]
 
@@ -124,7 +128,7 @@ class ApproachManager:
 
         # erode accessible_costmap to make sure we get more central reachable points
         self.accessible_costmap = np.uint8(self.accessible_costmap)
-        kernel = np.ones((5,5), np.uint8)
+        kernel = np.ones((1,1), np.uint8)
         #kernel = np.ones((5,5), np.uint8)
         self.accessible_costmap = cv2.erode(self.accessible_costmap, kernel)
 
@@ -184,12 +188,9 @@ class ApproachManager:
 
         #erode accessible_costmap to make sure we get more central reachable points
 
-        kernel = np.ones((1,1), np.uint8)
+        kernel = np.ones((3,3), np.uint8)
         #kernel = np.ones((5,5), np.uint8)
         self.accessible_costmap = cv2.erode(self.accessible_costmap, kernel)
-        # cv2.imshow("ImWindow", self.accessible_costmap)
-        # cv2.waitKey(0)
-
 
 
     """
@@ -212,6 +213,11 @@ class ApproachManager:
         goal.target_pose.pose.orientation.y = pose.orientation.y
         goal.target_pose.pose.orientation.z = pose.orientation.z
         goal.target_pose.pose.orientation.w = pose.orientation.w
+
+        print("x:", pose.position.x,"y:", pose.position.y)
+        self.publish_marker(pose)
+        # cv2.imshow("ImWindow", self.accessible_costmap)
+        # cv2.waitKey(0)
 
         #rospy.loginfo("Sending next goal with xpose: %s" % str(pose))
         self.client.send_goal(goal)
@@ -287,7 +293,9 @@ class ApproachManager:
     def world_to_map_coords_simple(self, x, y):
         # print(f"X:{x}")
         # print(f"Y:{y}")
-        #print(self.map_transform.transform.translation.x)
+        print("Resolution before",self.map_transform.transform.translation.x)
+        rospy.sleep(2)
+        print("Resolution after",self.map_transform.transform.translation.x)
         c_x = round((x - self.map_transform.transform.translation.x) / self.map_resolution)
         c_y = round((y - self.map_transform.transform.translation.y) / self.map_resolution)
         return (c_x, c_y)
@@ -537,6 +545,7 @@ class ApproachManager:
         res_point = candidates[0]
 
         # convert to world coordinates and return res
+
         return self.map_to_world_coords(res_point[0], res_point[1])
 
 
@@ -617,6 +626,23 @@ class ApproachManager:
 
         return pose
     
+    def publish_marker(self, pose):
+        marker = Marker()
+        marker.header.stamp = rospy.Time(0)
+        marker.header.frame_id = 'map'
+        marker.pose = pose
+        marker.type = Marker.SPHERE
+        marker.action = Marker.ADD
+        marker.frame_locked = False
+        marker.lifetime = rospy.Duration(10)
+        marker.id = 1
+        marker.color = ColorRGBA(0,0,0,1)
+        marker.scale = Vector3(0.05, 0.05, 0.05)
+
+        self.greet_point_markers_array.markers.append(marker)
+
+        if marker.pose != None:
+            self.greet_point_markers_pub.publish(self.greet_point_markers_array)
 
 
 def test():

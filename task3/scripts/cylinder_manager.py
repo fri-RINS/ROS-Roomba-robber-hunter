@@ -23,7 +23,7 @@ from approach_manager import ApproachManager
 from face_compare import ImageCompareManager
 
 class CylinderManager:
-    def __init__(self,wanted_poster:Poster, cylinders: list):
+    def __init__(self,wanted_poster:Poster, cylinders: list,am = None):
         self.current_robot_pose = None
         self.odom_sub = rospy.Subscriber(
         '/amcl_pose', PoseWithCovarianceStamped, self.current_robot_pose_callback)
@@ -34,7 +34,7 @@ class CylinderManager:
         self.cylinder_face_manager = CylinderFaceManager()
         self.arm_manager = Arm_Mover()
         self.speaking_manager = SpeakingManager()
-        self.approach_manager = ApproachManager()
+        self.approach_manager = am
         
         self.cmd_vel_pub = rospy.Publisher(
         '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
@@ -83,7 +83,7 @@ class CylinderManager:
     def find_prisoner(self):
         rospy.loginfo("Retracting camera.")
 
-        self.retract_camera()
+        #self.retract_camera()
         for cylinder in self.cylinders:
             # Approach cylinder
             rospy.loginfo("Approaching cylinder.")
@@ -116,19 +116,25 @@ class CylinderManager:
 
 def main():
     rospy.init_node('cylinder_manager_node', anonymous=True)
-    time.sleep(2)
+    #time.sleep(2)
     rate = rospy.Rate(2)
-    image_path1 = '/home/kuznerjaka/catkin_ws/src/hw3/task3/img_test/img_test/image_2.jpg'
+    image_path1 = 'src/hw3/task3/img_test/img_test/image2.jpg'
 
     poster_image = cv2.imread(image_path1)
     poster = Poster("blue", poster_image, 100, True)
     
     pose = Pose()
-    pose.position.x = 0.5378066572479696
-    pose.position.y = 0.33111667322396626
+    pose.position.x = 3.265
+    pose.position.y = 0.258
     pose.position.z = 0.2870562880963201
-    cyl = Cylinder("blue", pose)
-    cm = CylinderManager(poster, [cyl])
+    cyl = Cylinder("red", pose)
+    pose = Pose()
+    pose.position.x = 2.43
+    pose.position.y = 2.66
+    pose.position.z = 0.2870562880963201
+    cyl2 = Cylinder("yellow", pose)
+    am = ApproachManager()
+    cm = CylinderManager(poster, [cyl,cyl2],am=am)
     rospy.loginfo("Finding the prisoner.")
     cm.find_prisoner()
 

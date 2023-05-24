@@ -197,7 +197,7 @@ class GoalQueue:
         self.face_goals.remove(completed_goal)
         self.completed_face_goals.append(completed_goal)
         if len(self.completed_face_goals) == self.num_faces:
-            rospy.loginfo("All faces greeted.")
+            print("All faces greeted.")
     
 
     def do_face_goal(self,my_goal):
@@ -211,13 +211,13 @@ class GoalQueue:
         twist_msg.linear.x = 0.0
         self.cmd_vel_pub.publish(twist_msg)
 
-        rospy.loginfo("Checking if this is a poster.")
+        print("Checking if this is a poster.")
         pd = PosterDetector(my_goal.pose)
 
         poster = pd.find_poster()
 
         if poster == None:
-            rospy.loginfo("This is a FACE. Let's ask questions.")    
+            print("This is a FACE. Let's ask questions.")    
             # SAY HELLO
             self.persons_approached += 1
             self.sm.greet()
@@ -234,7 +234,7 @@ class GoalQueue:
                 self.cylinder_colors_to_check = response
             
         else:
-            rospy.loginfo("This is a POSTER. Will not greet.")
+            print("This is a POSTER. Will not greet.")
             self.posters.append(poster)
 
         self.complete_face_goal(my_goal)
@@ -245,19 +245,19 @@ class GoalQueue:
 
         goal_x, goal_y = my_goal.get_goal_coordinates()
 
-        rospy.loginfo(f"Sending to coordinates: x: {goal_x}, y: {goal_y}")
+        print(f"Sending to coordinates: x: {goal_x}, y: {goal_y}")
         wait = self.client.wait_for_result()
         if not wait:
             rospy.logerr("Action server not available!")
             rospy.signal_shutdown("Action server not available!")
         else:
             if self.client.get_result():
-                rospy.loginfo(f"Reached goal {self.id_map_goal}: x: {goal_x}, y: {goal_y}")
+                print(f"Reached goal {self.id_map_goal}: x: {goal_x}, y: {goal_y}")
                 self.complete_map_goal(my_goal)
                 self.id_map_goal += 1
                 self.rotate(1, 0.3)
             else:
-                rospy.loginfo("Couldn't move robot")
+                print("Couldn't move robot")
 
         return
     def rotate(self,angle, speed):
@@ -276,7 +276,7 @@ class GoalQueue:
         duration = rospy.Duration.from_sec(
             6.28/speed)  # 6.28 radians = 360 degrees
 
-        rospy.loginfo("Start rotating.")
+        print("Start rotating.")
 
         # Loop until the duration has passed
         while rospy.Time.now() - t0 < duration:
@@ -288,7 +288,7 @@ class GoalQueue:
         # Stop the robot after the duration has passed
         cmd_vel.angular.z = 0.0
         self.cmd_vel_pub.publish(cmd_vel)
-        rospy.loginfo("Finished rotating.")
+        print("Finished rotating.")
 
     def calculate_greet_point(self,target_pose, safe_distance):
         current_point = self.current_robot_pose.position

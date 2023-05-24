@@ -22,6 +22,9 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <pcl/filters/voxel_grid.h>
 #include <limits>
+#include <map>
+#include <string>
+
 
 ros::Publisher pubx;
 ros::Publisher puby;
@@ -37,6 +40,9 @@ visualization_msgs::MarkerArray cylinder_marker_array; // for pub_cylinder_marke
 std::vector<int> potential_positions_clusters;
 std::vector<geometry_msgs::Pose> potential_positions;
 int marker_id = 0;
+std::map<std::string, int> dictionary; // Declare an empty map
+int num_yellow = 0;
+std::vector<double> yellow_vector =  { 255, 165, 0, 1};
 
 void downsample_pcl_voxel(const pcl::PCLPointCloud2ConstPtr &cloud_blob,
                           const pcl::PointCloud<PointT>::Ptr &cloud)
@@ -55,6 +61,7 @@ std::vector<double> get_color(double red, double green, double blue){
     double g = 165;
     double b = 0;
     double a = 1;
+  std::cerr << "Number of yellow cylinders BEFORE: " << num_yellow << std::endl;
 
   if (red > green && red > blue){
 		//Probably red
@@ -65,6 +72,8 @@ std::vector<double> get_color(double red, double green, double blue){
         g = 165;
         b = 0;
         a = 1;
+        num_yellow++;
+        std::cerr << "Number of yellow cylinders AFTER: " << num_yellow << std::endl;
         return std::vector<double> { r, g, b, a};
 
 		}
@@ -84,7 +93,11 @@ std::vector<double> get_color(double red, double green, double blue){
         g = 165;
         b = 0;
         a = 1;
+        num_yellow++;
+        std::cerr << "Number of yellow cylinders AFTER: " << num_yellow << std::endl;
         return std::vector<double> { r, g, b, a};
+        
+        
 		}
 		
         r = 0;
@@ -100,13 +113,21 @@ std::vector<double> get_color(double red, double green, double blue){
         a = 1;
         return std::vector<double> { r, g, b, a};
 	}
-	
+        num_yellow++;
+        std::cerr << "Number of yellow cylinders: " << num_yellow << std::endl;
 	return std::vector<double> { r, g, b, a};
 }
 
 void publish_new_marker(geometry_msgs::Pose pose, double red, double green, double blue)
 {
   std::vector<double> color = get_color(red, green, blue);
+  std::cerr << "Number of yellow cylinders: " << num_yellow << std::endl;
+  
+  if(num_yellow > 1 && yellow_vector == color){
+    std::cerr << "Number of yellow cylinders: " << std::endl;
+    return;
+  }
+
   visualization_msgs::Marker marker;
   marker.header.frame_id = "map";
   marker.header.stamp = ros::Time::now();

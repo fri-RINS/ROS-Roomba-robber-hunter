@@ -18,7 +18,7 @@ class Brain:
         {'x': 0, 'y': -1},
         {'x': 1, 'y': -1.2},
         {'x': 2.5, 'y': -0.5},
-        {'x': 1, 'y': 0.3},
+        {'x': 1, 'y': 0.0},
         {'x': 1, 'y': 2.5},
         {'x': 2.5, 'y': 1.3},
         {'x': 0.1, 'y': -1.5},
@@ -27,36 +27,40 @@ class Brain:
     ]
         
         self.whole_map_goals =  [
-        {'x': -1.0, 'y': 0},
-        {'x': 0, 'y': -1},
-        {'x': 0.15, 'y': -1.2},
-        {'x': 1, 'y': -1.2},
-        {'x': 3.5, 'y': -0.6},
-        {'x': 2.3, 'y': 0.5},
-        {'x': 2.15, 'y': 0.95},
-        {'x': 1, 'y': 0.2},
-        {'x': 2, 'y': 2.4},
-        {'x': 1, 'y': 2.6},
-        {'x': -1.4, 'y': 1.7},
-        {'x': -0.65, 'y': 0.15},
         {'x': 0, 'y': 0},
+        {'x': -1.0, 'y': 0.0 },
+        {'x': 0.0, 'y': -1.0 },
+        {'x': 0.15, 'y': -1.2},
+        {'x': 2.0, 'y': -1.2 },
+        {'x': 3.5, 'y': -0.6 },
+        {'x': 2.3, 'y': 0.5  },
+        {'x': 1.0, 'y': 0.1  },
+        {'x': 1.2, 'y': 0.7  },
+        {'x': 2.5, 'y': 1.1  },
+        {'x': 2.0, 'y': 2.4  },
+        {'x': 1.0, 'y': 2.6  },
+        {'x': -1.4, 'y': 1.7 },
+        {'x': -0.65, 'y': 0.15}
+        
     ]
         self.dummy =  [
-        # {'x': -1.0, 'y': 0},
-        # {'x': 0, 'y': -1},
-        # {'x': 0.15, 'y': -1.2},
-        # {'x': 1, 'y': -1.2},
-        {'x': 3, 'y': -0.6},
-        # {'x': 2.15, 'y': 0.95},
-        # {'x': 1, 'y': 0.2},
-        # {'x': 2, 'y': 2.4},
-        # {'x': 0.35, 'y': 2.4},
-        # {'x': -1.4, 'y': 1.7},
-        # {'x': -0.65, 'y': 0.15},
         # {'x': 0, 'y': 0},
+        # {'x': -1.0, 'y': 0.0 },
+        # {'x': 0.0, 'y': -1.0 },
+        # {'x': 0.15, 'y': -1.2},
+        # {'x': 2.0, 'y': -1.2 },
+        {'x': 3.5, 'y': -0.6 },
+        # {'x': 2.3, 'y': 0.5  },
+        # {'x': 1.0, 'y': 0.1  },
+        {'x': 1.2, 'y': 0.7  },
+        {'x': 2.5, 'y': 1.1  },
+        {'x': 2.0, 'y': 2.4  },
+        # {'x': 1.0, 'y': 2.6  },
+        # {'x': -1.4, 'y': 1.7 },
+        # {'x': -0.65, 'y': 0.15}
     ]
     # add more goals as needed
-        self.gq = GoalQueue(self.whole_map_goals,num_faces=2,num_posters=2,num_rings=4,num_cylinders=4)
+        self.gq = GoalQueue(self.dummy[::-1],num_faces=1,num_posters=1,num_rings=0,num_cylinders=2)
         self.cylinder_manager = None
         self.am = Arm_Mover()
         self.parking_manager = None
@@ -103,7 +107,8 @@ if __name__ == '__main__':
 
     print("STARTING CYLINDER MANAGER..")
 
-    brain.cylinder_manager = CylinderManager(wanted_poster,cylinders_to_approach)
+
+    brain.cylinder_manager = CylinderManager(wanted_poster,cylinders_to_approach,am=brain.am)
     #cylinder approach works
     #TODO
     #image comparison!!

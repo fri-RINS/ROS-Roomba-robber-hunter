@@ -79,7 +79,7 @@ class ColorDetector:
         print("yellow, green, black, blue, red")
         print(  [float("{:.2f}".format(i/sum(count))) for i in count] )
         
-        colors = ["yellow", "green", "black", "blue", "red"]
+        colors = ["blue", "green", "black", "blue", "red"]
 
         color_str = colors[count.index(max(count))]
 

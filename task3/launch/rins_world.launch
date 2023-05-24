@@ -50,7 +50,7 @@
   
   
   <!-- Map server -->
-  <arg name="map_file" default="$(find exercise3)/maps/task3_map.yaml"/>
+  <arg name="map_file" default="$(find exercise3)/maps/task3_map2.yaml"/>
   <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
 
   <!-- Localization -->

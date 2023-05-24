@@ -125,8 +125,8 @@ class PosterDetector:
         # print("OCR1", text)
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        cv2.imshow("ImWindow", gray)
-        cv2.waitKey(0)
+        # cv2.imshow("ImWindow", gray)
+        # cv2.waitKey(0)
         # Initialize OCR engine
         ocr_tool = pyocr.get_available_tools()[0]  # Use the first available OCR engine
         ocr_lang = 'eng'  # Specify the language for OCR
@@ -136,7 +136,7 @@ class PosterDetector:
         # Perform OCR on the image
         text = ocr_tool.image_to_string(pil_image, lang=ocr_lang)
 
-        print(text)
+        #print(text)
 
 
         return text
@@ -224,6 +224,7 @@ class PosterDetector:
         marker.id = self.marker_num
         marker.color = ColorRGBA(1, 1, 1, 1)
         marker.scale = Vector3(0.2, 0.2, 0.2)
+        self.marker_num += 1
 
         self.poster_marker_array.markers.append(marker)
 
