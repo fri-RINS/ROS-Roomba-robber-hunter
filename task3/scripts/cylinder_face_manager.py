@@ -47,7 +47,8 @@ class CylinderFaceManager:
         self.marker_array = MarkerArray()
         self.marker_num = 1
         self.clusters = []
-
+        self.cmd_vel_pub = rospy.Publisher(
+        '/cmd_vel_mux/input/teleop', Twist, queue_size=100)
         self.face_found = False
 
         # Subscribe to the image and/or depth topic
@@ -85,6 +86,14 @@ class CylinderFaceManager:
         """Function to calculate euclidean distance between two points."""
 
         return np.sqrt((point1.x - point2[0])**2 + (point1.y - point2[1])**2 + (point1.z - point2[2])**2)
+    
+    def rotate_left(self):
+        twist_msg = Twist()
+        twist_msg.angular.z = 0.5
+        self.cmd_vel_pub.publish(twist_msg)
+        rospy.sleep(1)
+        twist_msg.angular.z = 0.0
+        self.cmd_vel_pub.publish(twist_msg)  
 
     def find_faces(self):
         while self.face_found is False:
@@ -149,9 +158,8 @@ class CylinderFaceManager:
                         face_region = cv2.cvtColor(face_region, cv2.COLOR_BGR2RGB)
                         face_region = cv2.cvtColor(face_region, cv2.COLOR_RGB2BGR)
                         return face_region  
-                    else:
-                        self.face_found = True
-                        return None
+                    
+            self.rotate_left()               
 
 def main():
     rospy.init_node('cylinder_face_manager', anonymous=True)
