@@ -128,7 +128,7 @@ class ApproachManager:
 
         # erode accessible_costmap to make sure we get more central reachable points
         self.accessible_costmap = np.uint8(self.accessible_costmap)
-        kernel = np.ones((3,3), np.uint8)
+        kernel = np.ones((5,5), np.uint8)
         #kernel = np.ones((5,5), np.uint8)
         self.accessible_costmap = cv2.erode(self.accessible_costmap, kernel)
 

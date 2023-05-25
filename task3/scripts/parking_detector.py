@@ -172,6 +172,7 @@ class ParkingDetector:
         #cv2.waitKey(1)
 
         elps = []
+        candidates = []
         for cnt in contours:
             #     print cnt
             #     print cnt.shape
@@ -357,7 +358,7 @@ class ParkingDetector:
     def rotate(self):
         
         twist = Twist()
-        twist.angular.z = 0.7  # Adjust angular velocity as needed
+        twist.angular.z = 0.4  # Adjust angular velocity as needed
 
         self.cmd_vel_pub.publish(twist)
 
@@ -372,8 +373,8 @@ class ParkingDetector:
         rate = rospy.Rate(10)
 
         twist = Twist()
-        twist.linear.x = -0.5  # Adjust angular velocity as needed
-        for _ in range(6):
+        twist.linear.x = -0.55  # Adjust angular velocity as needed
+        for _ in range(9):
             self.cmd_vel_pub.publish(twist)
             rate.sleep()
         twist.linear.x = 0.0  # Adjust angular velocity as needed
@@ -406,9 +407,12 @@ class ParkingDetector:
         """
 
         rospy.sleep(1.0)
+        prev_is_set = False
 
         cond = True
-        while cond:
+        st = 0
+        y_is_set = False
+        while cond and st < 2000:
             try:
                 rgb_img = rospy.wait_for_message('/arm_camera/rgb/image_raw', Image)
                 point_s.header.frame_id = "arm_camera_rgb_optical_frame"
@@ -422,28 +426,60 @@ class ParkingDetector:
                 print(e)
 
             x_avg, y_avg = self.get_elipse(cv_image)
+            if prev_is_set:
+                diff_x = abs(prev_x -x_avg)
+                diff_y = abs(prev_y -y_avg)
+                diff = diff_x + diff_y
+            else:
+                diff = 0
             print(x_avg, y_avg)
             msg = Twist()
-            if 300 < y_avg < 380:
-                msg.angular.z = 0
-                msg.linear.x = 0.1
-
-            elif y_avg > 340:
-                msg.angular.z = -0.1
-
-
-            elif y_avg < 300:
-                msg.angular.z = 0.1
-
-            if 600 >x_avg > 500:
+            print("diff",diff)
+            if diff < 10:
+                st +=1
+            else:
+                st = 0
+            if(diff < 1000):
+                if 280<= y_avg <= 340 and 600 >=x_avg >= 400:
                     cond = False
+                    dist = (1 - (x_avg / 600)) / 1.5
+                    msg.linear.x = dist
+                    print("dist",dist)
+
+                else:
+                    if 260 <= y_avg < 360:
+                        msg.angular.z = 0.0
+                        if x_avg > 450:
+                            msg.linear.x = 0.01
+                        elif 500>x_avg > 400:
+                            msg.linear.x = 0.03
+                        elif x_avg <= 400:
+                            msg.linear.x = 0.07
+
+                    if y_avg >= 360:
+                        msg.linear.x = 0.01
+                        msg.angular.z = -0.05
+
+                    elif y_avg <= 260:
+                        msg.linear.x = 0.01
+                        msg.angular.z = 0.05
+
+            else:
+                #cond = False
+                msg.linear.x = -3
 
             self.cmd_vel_pub.publish(msg)
+            prev_is_set = True
+            prev_x = x_avg
+            prev_y = y_avg
+            
+
 
 def main():
 
     rospy.init_node('parking_detector_node', anonymous=True)
     pd = ParkingDetector()
+    rospy.rate(2)
     parking_pose = pd.find_rough_parking()
     #pd.publish_marker(parking_pose)
     pd.fine_parking()
