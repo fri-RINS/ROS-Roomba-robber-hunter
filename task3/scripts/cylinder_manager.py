@@ -43,10 +43,16 @@ class CylinderManager:
         rospy.sleep(2)
 
         self.wanted_poster = wanted_poster
+        self.wanted_poster.image = self.get_img_from_poster(self.wanted_poster)
         self.cylinders = cylinders
         self.icm = ImageCompareManager()
 
         
+    def get_img_from_poster(self, poster):
+        poster_image = poster.image
+        poster_image = cv2.cvtColor(poster_image, cv2.COLOR_BGR2RGB)
+        poster_image = cv2.cvtColor(poster_image, cv2.COLOR_RGB2BGR)
+        return poster_image
 
 
     def move_forward(self):
@@ -102,17 +108,6 @@ class CylinderManager:
         y_obj = cylinder_pose.position.y
         greet_pose = self.approach_manager.get_object_greet_pose(x_obj,y_obj)
         self.approach_manager.send_goal_pose(greet_pose)
-        
-
-    def extend_camera(self):
-        time.sleep(0.5)
-        self.arm_manager.arm_movement_pub.publish(self.arm_manager.find_face)
-        time.sleep(5)
-
-    def retract_camera(self):
-        time.sleep(0.5)
-        self.arm_manager.arm_movement_pub.publish(self.arm_manager.retract)
-        time.sleep(5)
     
     def find_prisoner(self):
         rospy.loginfo("Retracting camera.")
@@ -127,7 +122,7 @@ class CylinderManager:
 
             # Find face on cylinder
             rospy.loginfo("Extending camera.")
-            self.extend_camera()
+            self.arm_manager.extend_to_face()
 
             face_image = self.cylinder_face_manager.find_faces()
             if face_image is None:
@@ -135,7 +130,7 @@ class CylinderManager:
             else:
                 confidence = self.icm.compare_faces(face_image, self.wanted_poster.image)
             confidences.append(confidence)
-            self.retract_camera()
+            self.arm_manager.retract_camera()
 
 
 

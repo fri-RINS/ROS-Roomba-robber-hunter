@@ -65,9 +65,9 @@ class PosterDetector:
         # self.image_sub = rospy.Subscriber("/camera/rgb/image_raw", Image, self.image_callback)
         # self.depth_sub = rospy.Subscriber("/camera/depth/image_raw", Image, self.depth_callback)
 
-        # Publiser for the visualization markers
-        self.markers_pub = rospy.Publisher(
-            'face_markers', MarkerArray, queue_size=1000)
+        # # Publiser for the visualization markers
+        # self.markers_pub = rospy.Publisher(
+        #     'face_markers', MarkerArray, queue_size=1000)
         #self.markers_pub.publish(MarkerArray())
 
         # Publiser for the posters 
@@ -193,7 +193,7 @@ class PosterDetector:
 
     def find_poster(self):
         poster = Poster(None, None, None, False)
-        for i in range(1):
+        for i in range(3):
             potential_poster = self.detect_poster()
             if potential_poster != None:
                 poster.image = potential_poster.image
@@ -202,9 +202,14 @@ class PosterDetector:
                     poster.color = potential_poster.color
                 if potential_poster.prize != -1:
                     poster.prize = potential_poster.prize
+                if poster.prize is not None and poster.color is not None:
+                    break
                 
         if poster.is_poster == True:
             print(f"This is a POSTER. Color: {poster.color} Prize:{poster.prize}")
+            if poster.color is None:
+                poster.color = "blue"
+                print("Poster color set to blue:(")
             self.publish_marker(self.pose)
             print("new poster marker appended")
             return poster
@@ -213,6 +218,7 @@ class PosterDetector:
             return None
 
     def publish_marker(self, pose):
+        marker_array = MarkerArray()
         marker = Marker()
         marker.header.stamp = rospy.Time(0)
         marker.header.frame_id = 'map'
@@ -226,10 +232,12 @@ class PosterDetector:
         marker.scale = Vector3(0.2, 0.2, 0.2)
         self.marker_num += 1
 
-        self.poster_marker_array.markers.append(marker)
+        # self.poster_marker_array.markers.append(marker)
+        marker_array.markers.append(marker)
 
         if marker.pose != None:
-            self.poster_markers_pub.publish(self.poster_marker_array)
+            #self.poster_markers_pub.publish(self.poster_marker_array)
+            self.poster_markers_pub.publish(marker_array)
 
     def detect_poster(self):
         print('I got a new potential poster!')

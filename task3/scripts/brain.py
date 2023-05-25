@@ -34,7 +34,7 @@ class Brain:
         {'x': 2.0, 'y': -1.2 },
         {'x': 3.5, 'y': -0.6 },
         {'x': 2.3, 'y': 0.5  },
-        {'x': 1.0, 'y': 0.1  },
+        {'x': 1.0, 'y': -0.1  },
         {'x': 1.2, 'y': 0.7  },
         {'x': 2.5, 'y': 1.1  },
         {'x': 2.0, 'y': 2.4  },
@@ -60,7 +60,7 @@ class Brain:
         # {'x': -0.65, 'y': 0.15}
     ]
     # add more goals as needed
-        self.gq = GoalQueue(self.dummy[::-1],num_faces=1,num_posters=1,num_rings=0,num_cylinders=2)
+        self.gq = GoalQueue(self.whole_map_goals[::-1],num_faces=4,num_posters=2,num_rings=4,num_cylinders=4)
         self.cylinder_manager = None
         self.am = Arm_Mover()
         self.parking_manager = None

@@ -427,12 +427,16 @@ class ParkingDetector:
             if 300 < y_avg < 380:
                 msg.angular.z = 0
                 msg.linear.x = 0.1
-                if x_avg > 525:
-                    cond = False
-            elif y_avg > 380:
-                msg.angular.z = -0.3
+
+            elif y_avg > 340:
+                msg.angular.z = -0.1
+
+
             elif y_avg < 300:
-                msg.angular.z = 0.3
+                msg.angular.z = 0.1
+
+            if 600 >x_avg > 500:
+                    cond = False
 
             self.cmd_vel_pub.publish(msg)
 
