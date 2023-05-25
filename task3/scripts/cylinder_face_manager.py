@@ -96,7 +96,12 @@ class CylinderFaceManager:
         self.cmd_vel_pub.publish(twist_msg)  
 
     def find_faces(self):
+        self.face_found = False
+        counter = 0
         while self.face_found is False:
+            if counter > 15:
+                return None
+            counter +=1
             print('I got a new cylinder face image!')
 
             # Get the next rgb and depth images that are posted from the camera
@@ -182,8 +187,8 @@ def main():
     image1 = cv2.imread(image_path1)
     image2 = cv2.imread(image_path2)
 
-    icm.compare_faces(face_region, image1)
-    icm.compare_faces(face_region, image2)
+    conf1 = icm.compare_faces(face_region, image1)
+    conf2 = icm.compare_faces(face_region, image2)
 
     # cv2.imshow("ImWindow", face_region)
     # cv2.waitKey(0)

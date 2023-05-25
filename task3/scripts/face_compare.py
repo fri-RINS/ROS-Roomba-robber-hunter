@@ -117,11 +117,11 @@ class ImageCompareManager():
         if confidence > 0.4:
             print("Faces are the same:", confidence)
 
-            return True
         else:
             print("Faces are different:", confidence)
 
-            return False
+    
+        return confidence
 
 def euclidean_dist(vector_x, vector_y):
     if len(vector_x) != len(vector_y):
